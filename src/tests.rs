@@ -65,15 +65,24 @@ fn eval() {
 #[test]
 fn encode() {
     let mut enc = Encoder::new();
-    assert_eq!(insts![o], enc.encode_number(0, 0));
-    assert_eq!(insts![i o], enc.encode_number(1, 0));
-    assert_eq!(insts![i i o], enc.encode_number(2, 0));
-    assert_eq!(insts![i i i o], enc.encode_number(3, 0));
-    assert_eq!(insts![i i s o], enc.encode_number(4, 0));
-    assert_eq!(insts![i i s i o], enc.encode_number(5, 0));
-    assert_eq!(insts![i i s i i o], enc.encode_number(6, 0));
-    assert_eq!(insts![i i i s d d o], enc.encode_number(7, 0));
-    assert_eq!(insts![i i i s d o], enc.encode_number(8, 0));
-    assert_eq!(insts![i i i s o], enc.encode_number(9, 0));
-    assert_eq!(insts![i i i s i o], enc.encode_number(10, 0));
+    assert_eq!(insts![o], enc.encode_number(0));
+    assert_eq!(insts![i o], enc.encode_number(1));
+    assert_eq!(insts![i i o], enc.encode_number(2));
+    assert_eq!(insts![i i i o], enc.encode_number(3));
+    assert_eq!(insts![i i s o], enc.encode_number(4));
+    assert_eq!(insts![i i s i o], enc.encode_number(5));
+    assert_eq!(insts![i i s i i o], enc.encode_number(6));
+    assert_eq!(insts![i i i s d d o], enc.encode_number(7));
+    assert_eq!(insts![i i i s d o], enc.encode_number(8));
+    assert_eq!(insts![i i i s o], enc.encode_number(9));
+    assert_eq!(insts![i i i s i o], enc.encode_number(10));
+}
+
+#[ignore]
+#[test]
+fn slow_encode() {
+    let mut enc = Encoder::new();
+    // "Wo" in, e.g., "Hello, World!"
+    enc.append_number(87);
+    enc.append_number(111);
 }

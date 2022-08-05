@@ -50,7 +50,7 @@ impl Inst {
             Inst::I => acc.wrapping_sub(1),
             Inst::D => acc.wrapping_add(1),
             Inst::S => {
-                let sqrt = (acc as f64).sqrt() as i32;
+                let sqrt = (acc as u32 as f64).sqrt() as i32;
                 if sqrt.wrapping_mul(sqrt) != acc {
                     return None;
                 }
@@ -67,15 +67,15 @@ impl Inst {
 
     #[must_use]
     #[inline]
-    pub fn encode(ir: &[Ir], acc: i32) -> Vec<Inst> {
-        Encoder::new().encode_ir(ir, acc)
+    pub fn encode(ir: &[Ir]) -> Vec<Inst> {
+        Encoder::new().encode_ir(ir)
     }
 
     #[must_use]
     #[inline]
-    pub fn minimize(insts: &[Inst], acc: i32) -> Vec<Inst> {
+    pub fn minimize(insts: &[Inst]) -> Vec<Inst> {
         let (ir, _) = Ir::eval(insts);
-        Self::encode(&ir, acc)
+        Self::encode(&ir)
     }
 }
 

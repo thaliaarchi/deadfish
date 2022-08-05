@@ -37,6 +37,7 @@
 #![allow(
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
     clippy::module_name_repetitions
 )]
 

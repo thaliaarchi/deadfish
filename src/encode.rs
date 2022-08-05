@@ -43,6 +43,14 @@ impl Encoder {
         Self::default()
     }
 
+    #[must_use]
+    #[inline]
+    pub fn with_acc(acc: i32) -> Self {
+        let mut enc = Self::new();
+        enc.acc = acc;
+        enc
+    }
+
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
     pub fn append_number(&mut self, n: i32) -> &[Inst] {
         self.queue.push(Node {
@@ -70,8 +78,8 @@ impl Encoder {
 
     #[must_use]
     #[inline]
-    pub fn encode_number(&mut self, n: i32, acc: i32) -> Vec<Inst> {
-        self.encode(acc, |enc| {
+    pub fn encode_number(&mut self, n: i32) -> Vec<Inst> {
+        self.encode(|enc| {
             enc.append_number(n);
         })
     }
@@ -95,8 +103,8 @@ impl Encoder {
 
     #[must_use]
     #[inline]
-    pub fn encode_ir(&mut self, ir: &[Ir], acc: i32) -> Vec<Inst> {
-        self.encode(acc, |enc| {
+    pub fn encode_ir(&mut self, ir: &[Ir]) -> Vec<Inst> {
+        self.encode(|enc| {
             enc.append_ir(ir);
         })
     }
@@ -112,12 +120,8 @@ impl Encoder {
 
     #[must_use]
     #[inline]
-    pub fn encode_numbers<T: Into<i32>, I: Iterator<Item = T>>(
-        &mut self,
-        numbers: I,
-        acc: i32,
-    ) -> Vec<Inst> {
-        self.encode(acc, |enc| {
+    pub fn encode_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) -> Vec<Inst> {
+        self.encode(|enc| {
             enc.append_numbers(numbers);
         })
     }
@@ -133,8 +137,8 @@ impl Encoder {
 
     #[must_use]
     #[inline]
-    pub fn encode_str(&mut self, s: &str, acc: i32) -> Vec<Inst> {
-        self.encode(acc, |enc| {
+    pub fn encode_str(&mut self, s: &str) -> Vec<Inst> {
+        self.encode(|enc| {
             enc.append_str(s);
         })
     }
@@ -167,8 +171,8 @@ impl Encoder {
     }
 
     #[inline]
-    pub fn clear(&mut self) {
-        self.acc = 0;
+    pub fn clear(&mut self, acc: i32) {
+        self.acc = acc;
         self.insts.clear();
     }
 
@@ -203,8 +207,8 @@ impl Encoder {
     }
 
     #[inline]
-    fn encode<F: FnOnce(&mut Self) -> R, R>(&mut self, acc: i32, f: F) -> Vec<Inst> {
-        self.acc = acc;
+    fn encode<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> Vec<Inst> {
+        self.acc = 0;
         self.insts.clear();
         f(self);
         self.take_insts()
