@@ -41,10 +41,10 @@
     clippy::module_name_repetitions
 )]
 
-pub use encode::*;
+pub use bfs::*;
 pub use inst::*;
 
-mod encode;
+mod bfs;
 mod inst;
 
 #[cfg(test)]
