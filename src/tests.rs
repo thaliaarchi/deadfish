@@ -20,13 +20,16 @@ macro_rules! insts[
 #[test]
 fn eval() {
     // Example programs from https://esolangs.org/wiki/Deadfish#Example_programs
-    assert_eq!((vec![Ir::Number(0)], 0), Ir::eval(insts![i i s s s o]));
     assert_eq!(
-        (vec![Ir::Number(288)], 288),
+        (vec![Ir::Prompts(6), Ir::Number(0)], 0),
+        Ir::eval(insts![i i s s s o])
+    );
+    assert_eq!(
+        (vec![Ir::Prompts(9), Ir::Number(288)], 288),
         Ir::eval(insts![d i i s s i s d o])
     );
     assert_eq!(
-        (vec![Ir::Number(0)], 0),
+        (vec![Ir::Prompts(40), Ir::Number(0)], 0),
         Ir::eval(insts![
             i i s s i s d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d o
         ])
@@ -35,18 +38,29 @@ fn eval() {
     assert_eq!(
         (
             vec![
+                Ir::Prompts(17),
                 Ir::Number(72),
+                Ir::Prompts(30),
                 Ir::Number(101),
+                Ir::Prompts(8),
                 Ir::Number(108),
+                Ir::Prompts(1),
                 Ir::Number(108),
+                Ir::Prompts(4),
                 Ir::Number(111),
                 Ir::Blanks(1),
+                Ir::Prompts(80),
                 Ir::Number(32),
                 Ir::Blanks(1),
+                Ir::Prompts(25),
                 Ir::Number(119),
+                Ir::Prompts(9),
                 Ir::Number(111),
+                Ir::Prompts(4),
                 Ir::Number(114),
+                Ir::Prompts(7),
                 Ir::Number(108),
+                Ir::Prompts(9),
                 Ir::Number(100),
                 Ir::Blanks(1),
             ],

@@ -87,15 +87,8 @@ impl Encoder {
     pub fn append_ir(&mut self, ir: &[Ir]) -> &[Inst] {
         let start = self.insts.len();
         for &inst in ir {
-            match inst {
-                Ir::Number(n) => {
-                    self.append_number(n);
-                }
-                Ir::Blanks(blanks) => {
-                    for _ in 0..blanks {
-                        self.push(Inst::Blank);
-                    }
-                }
+            if let Ir::Number(n) = inst {
+                self.append_number(n);
             }
         }
         &self.insts[start..]
@@ -187,7 +180,7 @@ impl Encoder {
     }
 
     fn path_from_queue(&mut self, tail: usize) -> &[Inst] {
-        let path_start = self.insts.len();
+        let start = self.insts.len();
         let mut index = tail;
         loop {
             let node = self.queue[index];
@@ -201,9 +194,9 @@ impl Encoder {
         }
         self.queue.clear();
         self.queue_index = 0;
-        self.insts[path_start..].reverse();
+        self.insts[start..].reverse();
         self.insts.push(Inst::O);
-        &self.insts[path_start..]
+        &self.insts[start..]
     }
 
     #[inline]

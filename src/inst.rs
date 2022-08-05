@@ -12,15 +12,15 @@ use crate::Encoder;
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Inst {
-    /// Increment
+    /// `i` — Increment
     I,
-    /// Decrement
+    /// `d` — Decrement
     D,
-    /// Square
+    /// `s` — Square
     S,
-    /// Output
+    /// `o` — Output
     O,
-    /// Print a line feed
+    /// other — Print a line feed
     Blank,
 }
 
@@ -84,6 +84,8 @@ impl Inst {
 pub enum Ir {
     /// Output a number.
     Number(i32),
+    /// Print `">> "` shell prompts.
+    Prompts(u32),
     /// Print line feeds.
     Blanks(u32),
 }
@@ -93,23 +95,58 @@ impl Ir {
     pub fn eval(insts: &[Inst]) -> (Vec<Self>, i32) {
         let mut ir = Vec::new();
         let mut acc = 0;
-        let mut blanks = 0;
+        // Counting prompts or blanks
+        let mut counting_prompts = true;
+        let mut count = 0;
+
         for &inst in insts {
             match inst {
-                Inst::I | Inst::D | Inst::S => acc = inst.apply(acc),
-                Inst::O => {
-                    if blanks != 0 {
-                        ir.push(Ir::Blanks(blanks));
-                        blanks = 0;
+                Inst::I | Inst::D | Inst::S => {
+                    // Flush any blanks and switch to counting prompts
+                    if !counting_prompts && count != 0 {
+                        ir.push(Ir::Blanks(count));
+                        count = 0;
                     }
+                    counting_prompts = true;
+                    count += 1;
+
+                    // Apply `i`, `d`, or `s` to the accumulator
+                    acc = inst.apply(acc);
+                }
+                Inst::O => {
+                    // Flush any prompts and blanks (including a prompt for `o`)
+                    if !counting_prompts && count != 0 {
+                        ir.push(Ir::Blanks(count));
+                        ir.push(Ir::Prompts(1));
+                    } else {
+                        ir.push(Ir::Prompts(count + 1));
+                    }
+                    count = 0;
+
+                    // Push `o` with the evaluated current accumulator
                     ir.push(Ir::Number(acc));
                 }
-                Inst::Blank => blanks += 1,
+                Inst::Blank => {
+                    // Flush any prompts and switch to counting blanks
+                    if counting_prompts && count != 0 {
+                        ir.push(Ir::Prompts(count));
+                        count = 0;
+                    }
+                    counting_prompts = false;
+                    count += 1;
+                }
             }
         }
-        if blanks != 0 {
-            ir.push(Ir::Blanks(blanks));
+
+        // Flush remaining prompts and blanks
+        if count != 0 {
+            if counting_prompts {
+                ir.push(Ir::Prompts(count));
+            } else {
+                ir.push(Ir::Blanks(count));
+            }
         }
+
         (ir, acc)
     }
 }
