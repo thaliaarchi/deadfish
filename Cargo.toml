@@ -1,0 +1,18 @@
+[package]
+name = "deadfish"
+version = "0.1.0"
+authors = ["Andrew Archibald <andrew@aarchibald.com>"]
+edition = "2021"
+rust-version = "1.62"
+description = "Efficient encoder for the Deadfish programming language, with accurate semantics"
+readme = "README.md"
+homepage = "https://github.com/andrewarchi/deadfish"
+repository = "https://github.com/andrewarchi/deadfish"
+license = "LGPL-3.0-or-later"
+keywords = ["deadfish", "encoding", "optimizer"]
+categories = ["compilers", "encoding"]
+
+[dependencies]
+
+[profile.release]
+lto = true

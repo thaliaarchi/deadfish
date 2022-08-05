@@ -1,0 +1,6 @@
+group_imports = "StdExternalCrate"
+merge_derives = false
+newline_style = "Unix"
+overflow_delimited_expr = true
+struct_lit_width = 32
+use_field_init_shorthand = true
