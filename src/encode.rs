@@ -9,6 +9,8 @@
 use std::collections::HashSet;
 use std::mem;
 
+use fxhash::FxBuildHasher;
+
 use crate::{Inst, Ir};
 
 #[derive(Clone, Debug)]
@@ -18,7 +20,7 @@ pub struct Encoder {
     queue: Vec<Node>,
     queue_index: usize,
     queue_capacity: usize,
-    visited: HashSet<i32>,
+    visited: HashSet<i32, FxBuildHasher>,
 }
 
 /// `Node` is a linked list element in a search path. It contains the
@@ -49,7 +51,7 @@ impl Encoder {
             queue: Vec::new(),
             queue_index: 0,
             queue_capacity: Self::DEFAULT_QUEUE_CAPACITY,
-            visited: HashSet::new(),
+            visited: HashSet::default(),
         }
     }
 
@@ -75,13 +77,11 @@ impl Encoder {
             }
             for inst in [Inst::I, Inst::D, Inst::S] {
                 let acc = inst.apply(node.acc);
-                if !self.visited.contains(&acc) {
-                    self.visited.insert(acc);
-                    if self.queue.capacity() < self.queue_capacity
-                        || self.queue.len() < self.queue.capacity()
-                    {
-                        self.queue.push(Node { acc, inst: Some(inst), prev: i });
-                    }
+                if self.visited.insert(acc)
+                    && (self.queue.capacity() < self.queue_capacity
+                        || self.queue.len() < self.queue.capacity())
+                {
+                    self.queue.push(Node { acc, inst: Some(inst), prev: i });
                 }
             }
         }

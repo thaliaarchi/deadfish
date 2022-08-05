@@ -13,6 +13,7 @@ keywords = ["deadfish", "encoding", "optimizer"]
 categories = ["compilers", "encoding"]
 
 [dependencies]
+fxhash = "0.2.1"
 
 [profile.release]
 lto = true
