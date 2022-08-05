@@ -45,3 +45,6 @@ pub use inst::*;
 
 mod encode;
 mod inst;
+
+#[cfg(test)]
+mod tests;

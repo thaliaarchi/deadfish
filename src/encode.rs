@@ -9,7 +9,7 @@
 use std::collections::HashSet;
 use std::mem;
 
-use crate::Inst;
+use crate::{Inst, Ir};
 
 #[derive(Clone, Debug, Default)]
 pub struct Encoder {
@@ -65,9 +65,10 @@ impl Encoder {
                 }
             }
         }
-        panic!("BUG! Encoding not found")
+        panic!("BUG! Unable to encode {} with acc {}", n, self.acc)
     }
 
+    #[must_use]
     #[inline]
     pub fn encode_number(&mut self, acc: i32, n: i32) -> Vec<Inst> {
         self.acc = acc;
@@ -76,8 +77,43 @@ impl Encoder {
         self.take_insts()
     }
 
+    pub fn append_ir(&mut self, ir: &[Ir]) -> &[Inst] {
+        let start = self.insts.len();
+        for &inst in ir {
+            match inst {
+                Ir::Number(n) => {
+                    self.append_number(n);
+                }
+                Ir::Blanks(blanks) => {
+                    for _ in 0..blanks {
+                        self.push(Inst::Blank);
+                    }
+                }
+            }
+        }
+        &self.insts[start..]
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn encode_ir(&mut self, ir: &[Ir]) -> Vec<Inst> {
+        self.acc = 0;
+        self.insts.clear();
+        self.append_ir(ir);
+        self.take_insts()
+    }
+
+    #[inline]
+    pub fn append_insts(&mut self, insts: &[Inst]) -> i32 {
+        for &inst in insts {
+            self.push(inst);
+        }
+        self.acc
+    }
+
     #[inline]
     pub fn push(&mut self, inst: Inst) -> i32 {
+        self.insts.push(inst);
         self.acc = inst.apply(self.acc);
         self.acc
     }
@@ -134,35 +170,5 @@ impl Encoder {
 impl From<Encoder> for Vec<Inst> {
     fn from(enc: Encoder) -> Self {
         enc.insts
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    macro_rules! insts[
-        (@inst i) => { Inst::I };
-        (@inst d) => { Inst::D };
-        (@inst s) => { Inst::S };
-        (@inst o) => { Inst::O };
-        (@inst _) => { Inst::Blank };
-        ($($inst:tt)*) => { &[$(insts!(@inst $inst)),+][..] };
-    ];
-
-    #[test]
-    fn encode() {
-        let mut enc = Encoder::new();
-        assert_eq!(insts![o], enc.encode_number(0, 0));
-        assert_eq!(insts![i o], enc.encode_number(0, 1));
-        assert_eq!(insts![i i o], enc.encode_number(0, 2));
-        assert_eq!(insts![i i i o], enc.encode_number(0, 3));
-        assert_eq!(insts![i i s o], enc.encode_number(0, 4));
-        assert_eq!(insts![i i s i o], enc.encode_number(0, 5));
-        assert_eq!(insts![i i s i i o], enc.encode_number(0, 6));
-        assert_eq!(insts![i i i s d d o], enc.encode_number(0, 7));
-        assert_eq!(insts![i i i s d o], enc.encode_number(0, 8));
-        assert_eq!(insts![i i i s o], enc.encode_number(0, 9));
-        assert_eq!(insts![i i i s i o], enc.encode_number(0, 10));
     }
 }

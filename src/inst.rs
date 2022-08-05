@@ -6,6 +6,8 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
+use crate::Encoder;
+
 /// Deadfish instructions.
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,6 +25,7 @@ pub enum Inst {
 }
 
 impl Inst {
+    /// Compute the operation on the accumulator.
     #[must_use]
     #[inline]
     pub const fn apply(&self, acc: i32) -> i32 {
@@ -39,6 +42,7 @@ impl Inst {
         }
     }
 
+    /// Compute the inverse operation on the accumulator, if possible.
     #[must_use]
     #[inline]
     pub fn apply_inverse(&self, acc: i32) -> Option<i32> {
@@ -59,5 +63,53 @@ impl Inst {
         } else {
             Some(acc)
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn encode(ir: &[Ir]) -> Vec<Inst> {
+        Encoder::new().encode_ir(ir)
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn minimize(insts: &[Inst]) -> Vec<Inst> {
+        let (ir, _) = Ir::eval(insts);
+        Self::encode(&ir)
+    }
+}
+
+/// Deadfish intermediate representation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Ir {
+    /// Output a number.
+    Number(i32),
+    /// Print line feeds.
+    Blanks(u32),
+}
+
+impl Ir {
+    #[must_use]
+    pub fn eval(insts: &[Inst]) -> (Vec<Self>, i32) {
+        let mut ir = Vec::new();
+        let mut acc = 0;
+        let mut blanks = 0;
+        for &inst in insts {
+            match inst {
+                Inst::I | Inst::D | Inst::S => acc = inst.apply(acc),
+                Inst::O => {
+                    if blanks != 0 {
+                        ir.push(Ir::Blanks(blanks));
+                        blanks = 0;
+                    }
+                    ir.push(Ir::Number(acc));
+                }
+                Inst::Blank => blanks += 1,
+            }
+        }
+        if blanks != 0 {
+            ir.push(Ir::Blanks(blanks));
+        }
+        (ir, acc)
     }
 }
