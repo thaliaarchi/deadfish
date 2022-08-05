@@ -25,39 +25,39 @@ pub enum Inst {
 impl Inst {
     #[must_use]
     #[inline]
-    pub const fn apply(&self, n: i32) -> i32 {
-        let n = match self {
-            Inst::I => n.wrapping_add(1),
-            Inst::D => n.wrapping_sub(1),
-            Inst::S => n.wrapping_mul(n),
-            _ => n,
+    pub const fn apply(&self, acc: i32) -> i32 {
+        let acc = match self {
+            Inst::I => acc.wrapping_add(1),
+            Inst::D => acc.wrapping_sub(1),
+            Inst::S => acc.wrapping_mul(acc),
+            _ => acc,
         };
-        if n == -1 || n == 256 {
+        if acc == -1 || acc == 256 {
             0
         } else {
-            n
+            acc
         }
     }
 
     #[must_use]
     #[inline]
-    pub fn apply_inverse(&self, n: i32) -> Option<i32> {
-        let n = match self {
-            Inst::I => n.wrapping_sub(1),
-            Inst::D => n.wrapping_add(1),
+    pub fn apply_inverse(&self, acc: i32) -> Option<i32> {
+        let acc = match self {
+            Inst::I => acc.wrapping_sub(1),
+            Inst::D => acc.wrapping_add(1),
             Inst::S => {
-                let sqrt = (n as f64).sqrt() as i32;
-                if sqrt.wrapping_mul(sqrt) != n {
+                let sqrt = (acc as f64).sqrt() as i32;
+                if sqrt.wrapping_mul(sqrt) != acc {
                     return None;
                 }
                 sqrt
             }
-            _ => n,
+            _ => acc,
         };
-        if n == -1 || n == 256 {
+        if acc == -1 || acc == 256 {
             None
         } else {
-            Some(n)
+            Some(acc)
         }
     }
 }
