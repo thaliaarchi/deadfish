@@ -21,3 +21,43 @@ pub enum Inst {
     /// Print a line feed
     Blank,
 }
+
+impl Inst {
+    #[must_use]
+    #[inline]
+    pub const fn apply(&self, n: i32) -> i32 {
+        let n = match self {
+            Inst::I => n.wrapping_add(1),
+            Inst::D => n.wrapping_sub(1),
+            Inst::S => n.wrapping_mul(n),
+            _ => n,
+        };
+        if n == -1 || n == 256 {
+            0
+        } else {
+            n
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn apply_inverse(&self, n: i32) -> Option<i32> {
+        let n = match self {
+            Inst::I => n.wrapping_sub(1),
+            Inst::D => n.wrapping_add(1),
+            Inst::S => {
+                let sqrt = (n as f64).sqrt() as i32;
+                if sqrt.wrapping_mul(sqrt) != n {
+                    return None;
+                }
+                sqrt
+            }
+            _ => n,
+        };
+        if n == -1 || n == 256 {
+            None
+        } else {
+            Some(n)
+        }
+    }
+}

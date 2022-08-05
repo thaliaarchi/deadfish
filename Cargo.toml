@@ -16,3 +16,6 @@ categories = ["compilers", "encoding"]
 
 [profile.release]
 lto = true
+
+[profile.test]
+opt-level = 3
