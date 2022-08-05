@@ -11,12 +11,13 @@ use std::mem;
 
 use crate::{Inst, Ir};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Encoder {
     acc: i32,
     insts: Vec<Inst>,
     queue: Vec<Node>,
     queue_index: usize,
+    queue_capacity: usize,
     visited: HashSet<i32>,
 }
 
@@ -42,7 +43,14 @@ impl Encoder {
     #[must_use]
     #[inline]
     pub fn new() -> Self {
-        Self::default()
+        Encoder {
+            acc: 0,
+            insts: Vec::new(),
+            queue: Vec::new(),
+            queue_index: 0,
+            queue_capacity: Self::DEFAULT_QUEUE_CAPACITY,
+            visited: HashSet::new(),
+        }
     }
 
     #[must_use]
@@ -54,24 +62,22 @@ impl Encoder {
     }
 
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
-    pub fn append_number_bfs(&mut self, n: i32, queue_capacity: usize) -> Option<&[Inst]> {
+    pub fn try_append_number(&mut self, n: i32) -> (Option<&[Inst]>, usize) {
         self.queue.push(Node {
             acc: self.acc,
             inst: None,
             prev: usize::MAX,
         });
-        while let Some(node) = self.queue_next() {
-            let i = self.queue_index - 1;
+        while let Some((i, node)) = self.queue_next() {
             if node.acc == n {
-                self.visited.clear();
                 self.acc = n;
-                return Some(self.path_from_queue(i));
+                return (Some(self.path_from_queue(i)), i);
             }
             for inst in [Inst::I, Inst::D, Inst::S] {
                 let acc = inst.apply(node.acc);
                 if !self.visited.contains(&acc) {
                     self.visited.insert(acc);
-                    if self.queue.capacity() < queue_capacity
+                    if self.queue.capacity() < self.queue_capacity
                         || self.queue.len() < self.queue.capacity()
                     {
                         self.queue.push(Node { acc, inst: Some(inst), prev: i });
@@ -79,15 +85,17 @@ impl Encoder {
                 }
             }
         }
-        None
+        let steps = self.queue.len();
+        self.clear();
+        (None, steps)
     }
 
     #[must_use]
     #[inline]
-    pub fn encode_number_bfs(&mut self, n: i32, queue_cap: usize) -> Option<Vec<Inst>> {
+    pub fn try_encode_number(&mut self, n: i32) -> Option<Vec<Inst>> {
         self.acc = 0;
         self.insts.clear();
-        if self.append_number_bfs(n, queue_cap).is_some() {
+        if self.try_append_number(n).0.is_some() {
             Some(self.take_insts())
         } else {
             None
@@ -97,14 +105,9 @@ impl Encoder {
     /// Encodes `n` as Deadfish instructions.
     pub fn append_number(&mut self, n: i32) -> &[Inst] {
         let acc = self.acc;
-        match self.append_number_bfs(n, Self::DEFAULT_QUEUE_CAPACITY) {
-            Some(insts) => insts,
-            None => {
-                panic!(
-                    "Unable to encode {acc} -> {n} within {} steps",
-                    Self::DEFAULT_QUEUE_CAPACITY
-                )
-            }
+        match self.try_append_number(n) {
+            (Some(insts), _) => insts,
+            (None, steps) => panic!("Unable to encode {acc} -> {n} within {steps} steps"),
         }
     }
 
@@ -196,16 +199,22 @@ impl Encoder {
     }
 
     #[inline]
-    pub fn clear(&mut self, acc: i32) {
+    pub fn reset(&mut self, acc: i32) {
         self.acc = acc;
         self.insts.clear();
     }
 
     #[inline]
-    fn queue_next(&mut self) -> Option<Node> {
-        if let Some(node) = self.queue.get(self.queue_index) {
+    pub fn set_queue_capacity(&mut self, capacity: usize) {
+        self.queue_capacity = capacity;
+    }
+
+    #[inline]
+    fn queue_next(&mut self) -> Option<(usize, Node)> {
+        let i = self.queue_index;
+        if let Some(node) = self.queue.get(i) {
             self.queue_index += 1;
-            Some(*node)
+            Some((i, *node))
         } else {
             None
         }
@@ -224,11 +233,17 @@ impl Encoder {
                 None => break,
             }
         }
-        self.queue.clear();
-        self.queue_index = 0;
+        self.clear();
         self.insts[start..].reverse();
         self.insts.push(Inst::O);
         &self.insts[start..]
+    }
+
+    #[inline]
+    fn clear(&mut self) {
+        self.queue.clear();
+        self.queue_index = 0;
+        self.visited.clear();
     }
 
     #[inline]
@@ -243,5 +258,11 @@ impl Encoder {
 impl From<Encoder> for Vec<Inst> {
     fn from(enc: Encoder) -> Self {
         enc.insts
+    }
+}
+
+impl Default for Encoder {
+    fn default() -> Self {
+        Self::new()
     }
 }
