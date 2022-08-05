@@ -67,15 +67,15 @@ impl Inst {
 
     #[must_use]
     #[inline]
-    pub fn encode(ir: &[Ir]) -> Vec<Inst> {
-        Encoder::new().encode_ir(ir)
+    pub fn encode(ir: &[Ir], acc: i32) -> Vec<Inst> {
+        Encoder::new().encode_ir(ir, acc)
     }
 
     #[must_use]
     #[inline]
-    pub fn minimize(insts: &[Inst]) -> Vec<Inst> {
+    pub fn minimize(insts: &[Inst], acc: i32) -> Vec<Inst> {
         let (ir, _) = Ir::eval(insts);
-        Self::encode(&ir)
+        Self::encode(&ir, acc)
     }
 }
 

@@ -70,11 +70,10 @@ impl Encoder {
 
     #[must_use]
     #[inline]
-    pub fn encode_number(&mut self, acc: i32, n: i32) -> Vec<Inst> {
-        self.acc = acc;
-        self.insts.clear();
-        self.append_number(n);
-        self.take_insts()
+    pub fn encode_number(&mut self, n: i32, acc: i32) -> Vec<Inst> {
+        self.encode(acc, |enc| {
+            enc.append_number(n);
+        })
     }
 
     pub fn append_ir(&mut self, ir: &[Ir]) -> &[Inst] {
@@ -96,11 +95,48 @@ impl Encoder {
 
     #[must_use]
     #[inline]
-    pub fn encode_ir(&mut self, ir: &[Ir]) -> Vec<Inst> {
-        self.acc = 0;
-        self.insts.clear();
-        self.append_ir(ir);
-        self.take_insts()
+    pub fn encode_ir(&mut self, ir: &[Ir], acc: i32) -> Vec<Inst> {
+        self.encode(acc, |enc| {
+            enc.append_ir(ir);
+        })
+    }
+
+    #[inline]
+    pub fn append_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) -> &[Inst] {
+        let start = self.insts.len();
+        for n in numbers {
+            self.append_number(n.into());
+        }
+        &self.insts[start..]
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn encode_numbers<T: Into<i32>, I: Iterator<Item = T>>(
+        &mut self,
+        numbers: I,
+        acc: i32,
+    ) -> Vec<Inst> {
+        self.encode(acc, |enc| {
+            enc.append_numbers(numbers);
+        })
+    }
+
+    #[inline]
+    pub fn append_str(&mut self, s: &str) -> &[Inst] {
+        let start = self.insts.len();
+        for n in s.chars() {
+            self.append_number(n as i32);
+        }
+        &self.insts[start..]
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn encode_str(&mut self, s: &str, acc: i32) -> Vec<Inst> {
+        self.encode(acc, |enc| {
+            enc.append_str(s);
+        })
     }
 
     #[inline]
@@ -164,6 +200,14 @@ impl Encoder {
         self.insts[path_start..].reverse();
         self.insts.push(Inst::O);
         &self.insts[path_start..]
+    }
+
+    #[inline]
+    fn encode<F: FnOnce(&mut Self) -> R, R>(&mut self, acc: i32, f: F) -> Vec<Inst> {
+        self.acc = acc;
+        self.insts.clear();
+        f(self);
+        self.take_insts()
     }
 }
 

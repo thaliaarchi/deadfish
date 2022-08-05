@@ -66,14 +66,14 @@ fn eval() {
 fn encode() {
     let mut enc = Encoder::new();
     assert_eq!(insts![o], enc.encode_number(0, 0));
-    assert_eq!(insts![i o], enc.encode_number(0, 1));
-    assert_eq!(insts![i i o], enc.encode_number(0, 2));
-    assert_eq!(insts![i i i o], enc.encode_number(0, 3));
-    assert_eq!(insts![i i s o], enc.encode_number(0, 4));
-    assert_eq!(insts![i i s i o], enc.encode_number(0, 5));
-    assert_eq!(insts![i i s i i o], enc.encode_number(0, 6));
-    assert_eq!(insts![i i i s d d o], enc.encode_number(0, 7));
-    assert_eq!(insts![i i i s d o], enc.encode_number(0, 8));
-    assert_eq!(insts![i i i s o], enc.encode_number(0, 9));
-    assert_eq!(insts![i i i s i o], enc.encode_number(0, 10));
+    assert_eq!(insts![i o], enc.encode_number(1, 0));
+    assert_eq!(insts![i i o], enc.encode_number(2, 0));
+    assert_eq!(insts![i i i o], enc.encode_number(3, 0));
+    assert_eq!(insts![i i s o], enc.encode_number(4, 0));
+    assert_eq!(insts![i i s i o], enc.encode_number(5, 0));
+    assert_eq!(insts![i i s i i o], enc.encode_number(6, 0));
+    assert_eq!(insts![i i i s d d o], enc.encode_number(7, 0));
+    assert_eq!(insts![i i i s d o], enc.encode_number(8, 0));
+    assert_eq!(insts![i i i s o], enc.encode_number(9, 0));
+    assert_eq!(insts![i i i s i o], enc.encode_number(10, 0));
 }
