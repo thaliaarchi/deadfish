@@ -37,6 +37,8 @@ struct Node {
 }
 
 impl Encoder {
+    pub const DEFAULT_QUEUE_CAPACITY: usize = 1 << 16;
+
     #[must_use]
     #[inline]
     pub fn new() -> Self {
@@ -52,7 +54,7 @@ impl Encoder {
     }
 
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
-    pub fn append_number(&mut self, n: i32) -> &[Inst] {
+    pub fn append_number_bfs(&mut self, n: i32, queue_capacity: usize) -> Option<&[Inst]> {
         self.queue.push(Node {
             acc: self.acc,
             inst: None,
@@ -63,17 +65,47 @@ impl Encoder {
             if node.acc == n {
                 self.visited.clear();
                 self.acc = n;
-                return self.path_from_queue(i);
+                return Some(self.path_from_queue(i));
             }
             for inst in [Inst::I, Inst::D, Inst::S] {
                 let acc = inst.apply(node.acc);
                 if !self.visited.contains(&acc) {
                     self.visited.insert(acc);
-                    self.queue.push(Node { acc, inst: Some(inst), prev: i });
+                    if self.queue.capacity() < queue_capacity
+                        || self.queue.len() < self.queue.capacity()
+                    {
+                        self.queue.push(Node { acc, inst: Some(inst), prev: i });
+                    }
                 }
             }
         }
-        panic!("BUG! Unable to encode {} with acc {}", n, self.acc)
+        None
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn encode_number_bfs(&mut self, n: i32, queue_cap: usize) -> Option<Vec<Inst>> {
+        self.acc = 0;
+        self.insts.clear();
+        if self.append_number_bfs(n, queue_cap).is_some() {
+            Some(self.take_insts())
+        } else {
+            None
+        }
+    }
+
+    /// Encodes `n` as Deadfish instructions.
+    pub fn append_number(&mut self, n: i32) -> &[Inst] {
+        let acc = self.acc;
+        match self.append_number_bfs(n, Self::DEFAULT_QUEUE_CAPACITY) {
+            Some(insts) => insts,
+            None => {
+                panic!(
+                    "Unable to encode {acc} -> {n} within {} steps",
+                    Self::DEFAULT_QUEUE_CAPACITY
+                )
+            }
+        }
     }
 
     #[must_use]
