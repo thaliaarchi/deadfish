@@ -7,16 +7,13 @@
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
 use std::collections::HashSet;
-use std::mem;
 
 use fxhash::FxBuildHasher;
 
-use crate::{Inst, Ir};
+use crate::Inst;
 
 #[derive(Clone, Debug)]
-pub struct Encoder {
-    acc: i32,
-    insts: Vec<Inst>,
+pub struct BfsEncoder {
     queue: Vec<Node>,
     queue_index: usize,
     queue_capacity: usize,
@@ -39,41 +36,39 @@ struct Node {
     prev: usize,
 }
 
-impl Encoder {
+impl BfsEncoder {
     pub const DEFAULT_QUEUE_CAPACITY: usize = 1 << 16;
 
     #[must_use]
     #[inline]
     pub fn new() -> Self {
-        Encoder {
-            acc: 0,
-            insts: Vec::new(),
-            queue: Vec::new(),
-            queue_index: 0,
-            queue_capacity: Self::DEFAULT_QUEUE_CAPACITY,
-            visited: HashSet::default(),
-        }
+        Self::with_capacity(Self::DEFAULT_QUEUE_CAPACITY)
     }
 
     #[must_use]
     #[inline]
-    pub fn with_acc(acc: i32) -> Self {
-        let mut enc = Self::new();
-        enc.acc = acc;
-        enc
+    pub fn with_capacity(capacity: usize) -> Self {
+        BfsEncoder {
+            queue: Vec::new(),
+            queue_index: 0,
+            queue_capacity: capacity,
+            visited: HashSet::default(),
+        }
     }
 
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
-    pub fn try_append_number(&mut self, n: i32) -> (Option<&[Inst]>, usize) {
+    #[must_use]
+    pub fn try_encode(&mut self, acc: i32, n: i32) -> Option<Vec<Inst>> {
         self.queue.push(Node {
-            acc: self.acc,
+            acc,
             inst: None,
             prev: usize::MAX,
         });
         while let Some((i, node)) = self.queue_next() {
             if node.acc == n {
-                self.acc = n;
-                return (Some(self.path_from_queue(i)), i);
+                let path = self.path_from_queue(i);
+                self.clear();
+                return Some(path);
             }
             for inst in [Inst::I, Inst::D, Inst::S] {
                 let acc = inst.apply(node.acc);
@@ -85,128 +80,19 @@ impl Encoder {
                 }
             }
         }
-        let steps = self.queue.len();
         self.clear();
-        (None, steps)
+        None
     }
 
     #[must_use]
-    #[inline]
-    pub fn try_encode_number(&mut self, n: i32) -> Option<Vec<Inst>> {
-        self.acc = 0;
-        self.insts.clear();
-        if self.try_append_number(n).0.is_some() {
-            Some(self.take_insts())
-        } else {
-            None
+    pub fn encode(&mut self, acc: i32, n: i32) -> Vec<Inst> {
+        match self.try_encode(acc, n) {
+            Some(path) => path,
+            None => panic!(
+                "Unable to encode {acc} -> {n} within {} steps",
+                self.queue.capacity(),
+            ),
         }
-    }
-
-    /// Encodes `n` as Deadfish instructions.
-    pub fn append_number(&mut self, n: i32) -> &[Inst] {
-        let acc = self.acc;
-        match self.try_append_number(n) {
-            (Some(insts), _) => insts,
-            (None, steps) => panic!("Unable to encode {acc} -> {n} within {steps} steps"),
-        }
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn encode_number(&mut self, n: i32) -> Vec<Inst> {
-        self.encode(|enc| {
-            enc.append_number(n);
-        })
-    }
-
-    pub fn append_ir(&mut self, ir: &[Ir]) -> &[Inst] {
-        let start = self.insts.len();
-        for &inst in ir {
-            if let Ir::Number(n) = inst {
-                self.append_number(n);
-            }
-        }
-        &self.insts[start..]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn encode_ir(&mut self, ir: &[Ir]) -> Vec<Inst> {
-        self.encode(|enc| {
-            enc.append_ir(ir);
-        })
-    }
-
-    #[inline]
-    pub fn append_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) -> &[Inst] {
-        let start = self.insts.len();
-        for n in numbers {
-            self.append_number(n.into());
-        }
-        &self.insts[start..]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn encode_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) -> Vec<Inst> {
-        self.encode(|enc| {
-            enc.append_numbers(numbers);
-        })
-    }
-
-    #[inline]
-    pub fn append_str(&mut self, s: &str) -> &[Inst] {
-        let start = self.insts.len();
-        for n in s.chars() {
-            self.append_number(n as i32);
-        }
-        &self.insts[start..]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn encode_str(&mut self, s: &str) -> Vec<Inst> {
-        self.encode(|enc| {
-            enc.append_str(s);
-        })
-    }
-
-    #[inline]
-    pub fn append_insts(&mut self, insts: &[Inst]) -> i32 {
-        for &inst in insts {
-            self.push(inst);
-        }
-        self.acc
-    }
-
-    #[inline]
-    pub fn push(&mut self, inst: Inst) -> i32 {
-        self.insts.push(inst);
-        self.acc = inst.apply(self.acc);
-        self.acc
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn insts(&self) -> &[Inst] {
-        &self.insts
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn take_insts(&mut self) -> Vec<Inst> {
-        mem::take(&mut self.insts)
-    }
-
-    #[inline]
-    pub fn reset(&mut self, acc: i32) {
-        self.acc = acc;
-        self.insts.clear();
-    }
-
-    #[inline]
-    pub fn set_queue_capacity(&mut self, capacity: usize) {
-        self.queue_capacity = capacity;
     }
 
     #[inline]
@@ -220,23 +106,22 @@ impl Encoder {
         }
     }
 
-    fn path_from_queue(&mut self, tail: usize) -> &[Inst] {
-        let start = self.insts.len();
+    fn path_from_queue(&mut self, tail: usize) -> Vec<Inst> {
+        let mut path = Vec::new();
         let mut index = tail;
         loop {
             let node = self.queue[index];
             match node.inst {
                 Some(inst) => {
-                    self.insts.push(inst);
+                    path.push(inst);
                     index = node.prev;
                 }
                 None => break,
             }
         }
-        self.clear();
-        self.insts[start..].reverse();
-        self.insts.push(Inst::O);
-        &self.insts[start..]
+        path.reverse();
+        path.push(Inst::O);
+        path
     }
 
     #[inline]
@@ -245,23 +130,9 @@ impl Encoder {
         self.queue_index = 0;
         self.visited.clear();
     }
-
-    #[inline]
-    fn encode<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> Vec<Inst> {
-        self.acc = 0;
-        self.insts.clear();
-        f(self);
-        self.take_insts()
-    }
 }
 
-impl From<Encoder> for Vec<Inst> {
-    fn from(enc: Encoder) -> Self {
-        enc.insts
-    }
-}
-
-impl Default for Encoder {
+impl Default for BfsEncoder {
     fn default() -> Self {
         Self::new()
     }

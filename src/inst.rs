@@ -6,7 +6,7 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use crate::Encoder;
+use crate::Builder;
 
 /// Deadfish instructions.
 #[repr(u8)]
@@ -68,7 +68,9 @@ impl Inst {
     #[must_use]
     #[inline]
     pub fn encode(ir: &[Ir]) -> Vec<Inst> {
-        Encoder::new().encode_ir(ir)
+        let mut b = Builder::new();
+        b.append_ir(ir);
+        b.into()
     }
 
     #[must_use]

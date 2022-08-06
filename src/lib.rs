@@ -42,9 +42,11 @@
 )]
 
 pub use bfs::*;
+pub use builder::*;
 pub use inst::*;
 
 mod bfs;
+mod builder;
 mod inst;
 
 #[cfg(test)]
