@@ -67,6 +67,12 @@ impl Inst {
 
     #[must_use]
     #[inline]
+    pub fn eval(insts: &[Inst]) -> i32 {
+        insts.iter().fold(0, |acc, inst| inst.apply(acc))
+    }
+
+    #[must_use]
+    #[inline]
     pub fn encode(ir: &[Ir]) -> Vec<Inst> {
         let mut b = Builder::new();
         b.append_ir(ir);

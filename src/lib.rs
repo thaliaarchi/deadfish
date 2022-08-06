@@ -43,10 +43,12 @@
 
 pub use bfs::*;
 pub use builder::*;
+pub use heuristic::*;
 pub use inst::*;
 
 mod bfs;
 mod builder;
+mod heuristic;
 mod inst;
 
 #[cfg(test)]
