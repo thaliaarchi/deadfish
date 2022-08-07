@@ -11,6 +11,10 @@
 //! Squaring a number doubles the number of trailing zeros. That is, for all
 //! values `n: u32`,
 //! `n.wrapping_mul(n).trailing_zeros() == (2 * n.trailing_zeros()).min(32)`.
+//!
+//! # Optimization
+//!
+//! Prefer shorter paths with fewer squares.
 
 use std::collections::VecDeque;
 
@@ -53,8 +57,7 @@ fn repeat(path: &mut VecDeque<Inst>, inst: Inst, count: u64) {
     }
 }
 
-pub fn append_overflow_to_zero(path: &mut Vec<Inst>, acc: i32) {
-    let (offset, squares) = count_overflow_to_zero(acc);
+pub fn append_path(path: &mut Vec<Inst>, offset: i32, squares: u32) {
     let (offset, direction) = if offset >= 0 {
         (offset as u32, Inst::I)
     } else {
@@ -68,7 +71,29 @@ pub fn append_overflow_to_zero(path: &mut Vec<Inst>, acc: i32) {
 
 #[must_use]
 #[inline]
-pub const fn count_overflow_to_zero(acc: i32) -> (i32, u32) {
+pub const fn count_to_zero_no_overflow(acc: i32) -> (i32, u32) {
+    const LOW_16: u32 = (4 + 16) / 2;
+    const LOW_256: u32 = (16 + 256) / 2;
+    const LOW_65536: u32 = (256 + 65536) / 2 + 1; // Add 1 to prefer decrement
+    const LOW_NEG: u32 = u32::MAX / 2 + 65536 / 2;
+    let (target, squares): (i32, _) = match acc as u32 {
+        // Offset to 0
+        0..4 => (0, 0),
+        // Offset and square to 256
+        4..LOW_16 => (4, 2),
+        LOW_16..LOW_256 => (16, 1),
+        LOW_256..LOW_65536 => (256, 0),
+        // Offset and square to 1 << 32
+        LOW_65536..LOW_NEG => (65536, 1),
+        // Offset to -1
+        LOW_NEG.. => (-1, 0),
+    };
+    (target.wrapping_sub(acc), squares)
+}
+
+#[must_use]
+#[inline]
+pub const fn count_to_zero_overflowing(acc: i32) -> (i32, u32) {
     let mut acc = acc;
     let mut tz = acc.trailing_zeros();
     let mut offset = 0;
