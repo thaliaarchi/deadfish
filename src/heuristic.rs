@@ -18,60 +18,87 @@
 
 use std::collections::VecDeque;
 
-use crate::Inst;
+use crate::{normalize, Inst};
+
+pub fn encode_via_zero(insts: &mut Vec<Inst>, acc: i32, n: i32) {
+    let acc = normalize(acc);
+    let n = normalize(n);
+
+    if acc != 0 {
+        let (offset, squares) = encode_to_zero(acc);
+        append_offset(insts, offset);
+        insts.extend((0..squares).map(|_| Inst::S));
+    }
+
+    if n != 0 {
+        let offsets = encode_from_zero(n);
+        append_offset(insts, offsets[0]);
+        for &offset in offsets.iter().skip(1) {
+            insts.push(Inst::S);
+            append_offset(insts, offset);
+        }
+    }
+
+    insts.push(Inst::O);
+}
+
+fn append_offset(insts: &mut Vec<Inst>, offset: i32) {
+    let (direction, count) = if offset >= 0 {
+        (Inst::I, offset as u32)
+    } else {
+        (Inst::D, -offset as u32)
+    };
+    insts.extend((0..count).map(|_| direction));
+}
 
 #[must_use]
-pub fn encode_from_zero(n: i32) -> Vec<Inst> {
-    let mut n = n as u64;
-    let mut path = VecDeque::new();
-    path.push_front(Inst::O);
+fn encode_from_zero(n: i32) -> VecDeque<i32> {
+    let mut n = n as u32;
+    let mut offsets = VecDeque::new();
     loop {
         if n < 4 {
-            repeat(&mut path, Inst::I, n);
-            return path.into();
+            offsets.push_front(n as i32);
+            return offsets;
         }
-        let (sqrt, offset, direction) = nearest_sqrt(n);
-        repeat(&mut path, direction, offset);
-        path.push_front(Inst::S);
+        let (sqrt, offset) = nearest_sqrt(n);
+        offsets.push_front(offset);
         n = sqrt;
     }
 }
 
 #[inline]
-fn nearest_sqrt(n: u64) -> (u64, u64, Inst) {
+fn nearest_sqrt(n: u32) -> (u32, i32) {
     let sqrt = (n as f64).sqrt();
-    let floor = sqrt.floor() as u64;
-    let ceil = sqrt.ceil() as u64;
-    if n - floor * floor < ceil * ceil - n {
-        (floor, n - floor * floor, Inst::I)
+    let floor = sqrt.floor() as u32;
+    let ceil = sqrt.ceil() as u32;
+    let floor_diff = n - floor * floor;
+    let ceil_diff = ceil * ceil - n;
+    // TODO: Avoid crossing over 256 with offset or squaring to it
+    // Avoid squaring to 1 << 32
+    if ceil == 65536 || floor_diff < ceil_diff {
+        (floor, floor_diff as i32)
     } else {
-        (ceil, ceil * ceil - n, Inst::D)
+        (ceil, -(ceil_diff as i32))
+    }
+}
+
+/// Finds the shortest path from `acc` to 0, preferring fewer squares as a tie
+/// breaker.
+#[inline]
+const fn encode_to_zero(acc: i32) -> (i32, u32) {
+    let (offset1, squares1) = encode_to_zero_no_overflow(acc);
+    let (offset2, squares2) = encode_to_zero_overflow(acc);
+    let len1 = offset1.unsigned_abs() + squares1;
+    let len2 = offset2.unsigned_abs() + squares2;
+    if len1 < len2 || len1 == len2 && squares1 <= squares2 {
+        (offset1, squares1)
+    } else {
+        (offset2, squares2)
     }
 }
 
 #[inline]
-fn repeat(path: &mut VecDeque<Inst>, inst: Inst, count: u64) {
-    path.reserve(count as usize);
-    for _ in 0..count {
-        path.push_front(inst);
-    }
-}
-
-pub fn append_path(path: &mut Vec<Inst>, offset: i32, squares: u32) {
-    let (offset, direction) = if offset >= 0 {
-        (offset as u32, Inst::I)
-    } else {
-        (-offset as u32, Inst::D)
-    };
-    path.reserve(offset as usize + squares as usize + 1);
-    repeat_vec(path, direction, offset);
-    repeat_vec(path, Inst::S, squares);
-    path.push(Inst::O);
-}
-
-#[must_use]
-#[inline]
-pub const fn count_to_zero_no_overflow(acc: i32) -> (i32, u32) {
+const fn encode_to_zero_no_overflow(acc: i32) -> (i32, u32) {
     const LOW_16: u32 = (4 + 16) / 2;
     const LOW_256: u32 = (16 + 256) / 2;
     const LOW_65536: u32 = (256 + 65536) / 2 + 1; // Add 1 to prefer decrement
@@ -91,9 +118,8 @@ pub const fn count_to_zero_no_overflow(acc: i32) -> (i32, u32) {
     (target.wrapping_sub(acc), squares)
 }
 
-#[must_use]
 #[inline]
-pub const fn count_to_zero_overflowing(acc: i32) -> (i32, u32) {
+const fn encode_to_zero_overflow(acc: i32) -> (i32, u32) {
     let mut acc = acc;
     let mut tz = acc.trailing_zeros();
     let mut offset = 0;
@@ -121,11 +147,4 @@ pub const fn count_to_zero_overflowing(acc: i32) -> (i32, u32) {
     // log2(32) - floor(log2(tz))
     let squares = tz.leading_zeros() - 32u32.leading_zeros();
     (offset, squares)
-}
-
-#[inline]
-fn repeat_vec(path: &mut Vec<Inst>, inst: Inst, count: u32) {
-    for _ in 0..count {
-        path.push(inst);
-    }
 }

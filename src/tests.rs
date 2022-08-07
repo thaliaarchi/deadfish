@@ -95,7 +95,15 @@ fn encode() {
 #[ignore]
 #[test]
 fn slow_encode() {
-    let mut enc = BfsEncoder::new();
     // "Wo" in, e.g., "Hello, World!"
-    _ = enc.encode(87, 111);
+    let acc = 87;
+    let n = 111;
+
+    let mut heuristic_path = Vec::new();
+    encode_via_zero(&mut heuristic_path, acc, n);
+
+    let mut enc = BfsEncoder::new();
+    let path = enc.encode(acc, n);
+
+    assert_eq!(heuristic_path, path);
 }
