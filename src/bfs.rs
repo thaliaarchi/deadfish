@@ -15,9 +15,9 @@ use crate::Inst;
 #[derive(Clone, Debug)]
 pub struct BfsEncoder {
     queue: Vec<Node>,
-    queue_index: usize,
-    queue_capacity: usize,
+    index: usize,
     visited: HashSet<i32, FxBuildHasher>,
+    max_len: u16,
 }
 
 /// `Node` is a linked list element in a search path. It contains the
@@ -34,25 +34,25 @@ struct Node {
     /// Index in `queue` of the previous node. To avoid extra space for
     /// alignment, it's not also within the `Option`, but is treated as such.
     prev: usize,
+    /// Path length.
+    len: u16,
 }
 
 impl BfsEncoder {
-    pub const DEFAULT_QUEUE_CAPACITY: usize = 1 << 16;
-
     #[must_use]
     #[inline]
     pub fn new() -> Self {
-        Self::with_capacity(Self::DEFAULT_QUEUE_CAPACITY)
+        Self::with_bound(usize::MAX)
     }
 
     #[must_use]
     #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_bound(max_len: usize) -> Self {
         BfsEncoder {
             queue: Vec::new(),
-            queue_index: 0,
-            queue_capacity: capacity,
+            index: 0,
             visited: HashSet::default(),
+            max_len: max_len.try_into().unwrap_or(u16::MAX),
         }
     }
 
@@ -63,6 +63,7 @@ impl BfsEncoder {
             acc,
             inst: None,
             prev: usize::MAX,
+            len: 0,
         });
         while let Some((i, node)) = self.queue_next() {
             if node.acc == n {
@@ -70,13 +71,17 @@ impl BfsEncoder {
                 self.clear();
                 return Some(path);
             }
-            for inst in [Inst::I, Inst::D, Inst::S] {
-                let acc = inst.apply(node.acc);
-                if self.visited.insert(acc)
-                    && (self.queue.capacity() < self.queue_capacity
-                        || self.queue.len() < self.queue.capacity())
-                {
-                    self.queue.push(Node { acc, inst: Some(inst), prev: i });
+            if node.len < self.max_len {
+                for inst in [Inst::I, Inst::D, Inst::S] {
+                    let acc = inst.apply(node.acc);
+                    if self.visited.insert(acc) {
+                        self.queue.push(Node {
+                            acc,
+                            inst: Some(inst),
+                            prev: i,
+                            len: node.len + 1,
+                        });
+                    }
                 }
             }
         }
@@ -89,17 +94,17 @@ impl BfsEncoder {
         match self.try_encode(acc, n) {
             Some(path) => path,
             None => panic!(
-                "Unable to encode {acc} -> {n} within {} steps",
-                self.queue.capacity(),
+                "Unable to encode {acc} -> {n} within {} instructions",
+                self.max_len,
             ),
         }
     }
 
     #[inline]
     fn queue_next(&mut self) -> Option<(usize, Node)> {
-        let i = self.queue_index;
+        let i = self.index;
         if let Some(node) = self.queue.get(i) {
-            self.queue_index += 1;
+            self.index += 1;
             Some((i, *node))
         } else {
             None
@@ -127,7 +132,7 @@ impl BfsEncoder {
     #[inline]
     fn clear(&mut self) {
         self.queue.clear();
-        self.queue_index = 0;
+        self.index = 0;
         self.visited.clear();
     }
 }
