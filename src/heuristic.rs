@@ -53,47 +53,53 @@ fn repeat(path: &mut VecDeque<Inst>, inst: Inst, count: u64) {
     }
 }
 
+pub fn append_overflow_to_zero(path: &mut Vec<Inst>, acc: i32) {
+    let (offset, squares) = count_overflow_to_zero(acc);
+    let (offset, direction) = if offset >= 0 {
+        (offset as u32, Inst::I)
+    } else {
+        (-offset as u32, Inst::D)
+    };
+    path.reserve(offset as usize + squares as usize + 1);
+    repeat_vec(path, direction, offset);
+    repeat_vec(path, Inst::S, squares);
+    path.push(Inst::O);
+}
+
 #[must_use]
-pub fn encode_to_zero(acc: i32) -> Vec<Inst> {
-    let mut path = Vec::with_capacity(6);
+#[inline]
+pub const fn count_overflow_to_zero(acc: i32) -> (i32, u32) {
     let mut acc = acc;
     let mut tz = acc.trailing_zeros();
+    let mut offset = 0;
     if tz < 2 {
-        let offset: i32 = if acc & 0b1111_1111 == 0b1111_1101 {
-            3
-        } else if acc & 0b1111_1111 == 0b0000_0011 {
-            -3
-        } else if acc & 0b1111 == 0b1110 {
-            2
-        } else if acc & 0b1111 == 0b0010 {
-            -2
-        } else if acc & 0b11 == 0b11 {
-            1
-        } else if acc & 0b11 == 0b01 {
-            -1
-        } else {
-            0
-        };
-        if offset != 0 {
-            if offset > 0 {
-                repeat_vec(&mut path, Inst::I, offset as u32);
-            } else {
-                repeat_vec(&mut path, Inst::D, -offset as u32);
+        offset = if tz == 1 {
+            match acc & 0b1111 {
+                // Offset to have 4+ trailing zeros
+                0b1110 => 2,
+                0b0010 => -2,
+                // Use the 1 trailing zero
+                _ => 0,
             }
-            acc += offset;
-            tz = acc.trailing_zeros();
-        }
+        } else {
+            match acc & 0b1111_1111 {
+                // Offset to have 8+ trailing zeros
+                0b1111_1101 => 3,
+                0b0000_0011 => -3,
+                // Offset to have 2+ trailing zeros (0b11 => 1, 0b01 => -1)
+                _ => (acc & 0b11) - 2,
+            }
+        };
+        acc = acc.wrapping_add(offset);
+        tz = acc.trailing_zeros();
     }
     // log2(32) - floor(log2(tz))
     let squares = tz.leading_zeros() - 32u32.leading_zeros();
-    repeat_vec(&mut path, Inst::S, squares);
-    path.push(Inst::O);
-    path
+    (offset, squares)
 }
 
 #[inline]
 fn repeat_vec(path: &mut Vec<Inst>, inst: Inst, count: u32) {
-    path.reserve(count as usize);
     for _ in 0..count {
         path.push(inst);
     }
