@@ -6,12 +6,18 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
+//! # Heuristic
+//!
+//! Squaring a number doubles the number of trailing zeros. That is, for all
+//! values `n: u32`,
+//! `n.wrapping_mul(n).trailing_zeros() == (2 * n.trailing_zeros()).min(32)`.
+
 use std::collections::VecDeque;
 
 use crate::Inst;
 
 #[must_use]
-pub fn sqrt_encode(n: i32) -> Vec<Inst> {
+pub fn encode_from_zero(n: i32) -> Vec<Inst> {
     let mut n = n as u64;
     let mut path = VecDeque::new();
     path.push_front(Inst::O);
@@ -44,5 +50,51 @@ fn repeat(path: &mut VecDeque<Inst>, inst: Inst, count: u64) {
     path.reserve(count as usize);
     for _ in 0..count {
         path.push_front(inst);
+    }
+}
+
+#[must_use]
+pub fn encode_to_zero(acc: i32) -> Vec<Inst> {
+    let mut path = Vec::with_capacity(6);
+    let mut acc = acc;
+    let mut tz = acc.trailing_zeros();
+    if tz < 2 {
+        let offset: i32 = if acc & 0b1111_1111 == 0b1111_1101 {
+            3
+        } else if acc & 0b1111_1111 == 0b0000_0011 {
+            -3
+        } else if acc & 0b1111 == 0b1110 {
+            2
+        } else if acc & 0b1111 == 0b0010 {
+            -2
+        } else if acc & 0b11 == 0b11 {
+            1
+        } else if acc & 0b11 == 0b01 {
+            -1
+        } else {
+            0
+        };
+        if offset != 0 {
+            if offset > 0 {
+                repeat_vec(&mut path, Inst::I, offset as u32);
+            } else {
+                repeat_vec(&mut path, Inst::D, -offset as u32);
+            }
+            acc += offset;
+            tz = acc.trailing_zeros();
+        }
+    }
+    // log2(32) - floor(log2(tz))
+    let squares = tz.leading_zeros() - 32u32.leading_zeros();
+    repeat_vec(&mut path, Inst::S, squares);
+    path.push(Inst::O);
+    path
+}
+
+#[inline]
+fn repeat_vec(path: &mut Vec<Inst>, inst: Inst, count: u32) {
+    path.reserve(count as usize);
+    for _ in 0..count {
+        path.push(inst);
     }
 }
