@@ -29,23 +29,20 @@ impl Inst {
     #[must_use]
     #[inline]
     pub const fn apply(&self, acc: i32) -> i32 {
-        let acc = match self {
+        let acc = normalize(acc);
+        normalize(match self {
             Inst::I => acc.wrapping_add(1),
             Inst::D => acc.wrapping_sub(1),
             Inst::S => acc.wrapping_mul(acc),
             _ => acc,
-        };
-        if acc == -1 || acc == 256 {
-            0
-        } else {
-            acc
-        }
+        })
     }
 
     /// Compute the inverse operation on the accumulator, if possible.
     #[must_use]
     #[inline]
     pub fn apply_inverse(&self, acc: i32) -> Option<i32> {
+        let acc = normalize(acc);
         let acc = match self {
             Inst::I => acc.wrapping_sub(1),
             Inst::D => acc.wrapping_add(1),
@@ -58,10 +55,10 @@ impl Inst {
             }
             _ => acc,
         };
-        if acc == -1 || acc == 256 {
-            None
-        } else {
+        if acc == normalize(acc) {
             Some(acc)
+        } else {
+            None
         }
     }
 
@@ -84,6 +81,16 @@ impl Inst {
     pub fn minimize(insts: &[Inst]) -> Vec<Inst> {
         let (ir, _) = Ir::eval(insts);
         Self::encode(&ir)
+    }
+}
+
+#[must_use]
+#[inline]
+pub const fn normalize(n: i32) -> i32 {
+    if n == -1 || n == 256 {
+        0
+    } else {
+        n
     }
 }
 
