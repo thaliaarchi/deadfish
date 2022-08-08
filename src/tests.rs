@@ -9,12 +9,9 @@
 use crate::*;
 
 macro_rules! insts[
-    (@inst i) => { Inst::I };
-    (@inst d) => { Inst::D };
-    (@inst s) => { Inst::S };
-    (@inst o) => { Inst::O };
-    (@inst _) => { Inst::Blank };
-    ($($inst:tt)*) => { &[$(insts!(@inst $inst)),+][..] };
+    ($($str:tt)*) => {
+        Inst::parse(concat!($(stringify!($str)),*))
+    };
 ];
 
 #[test]
@@ -22,17 +19,15 @@ fn eval() {
     // Example programs from https://esolangs.org/wiki/Deadfish#Example_programs
     assert_eq!(
         (vec![Ir::Prompts(6), Ir::Number(0)], 0),
-        Ir::eval(insts![i i s s s o])
+        Ir::eval(&insts![iissso])
     );
     assert_eq!(
         (vec![Ir::Prompts(9), Ir::Number(288)], 288),
-        Ir::eval(insts![d i i s s i s d o])
+        Ir::eval(&insts![diissisdo])
     );
     assert_eq!(
         (vec![Ir::Prompts(40), Ir::Number(0)], 0),
-        Ir::eval(insts![
-            i i s s i s d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d o
-        ])
+        Ir::eval(&insts![iissisdddddddddddddddddddddddddddddddddo])
     );
     // "Hello world"
     assert_eq!(
@@ -66,12 +61,10 @@ fn eval() {
             ],
             100
         ),
-        Ir::eval(insts![
-            i i s i i i i s i i i i i i i i o i i i i i i i i i i i i i i i i i i i i i i i i i i i
-            i i o i i i i i i i o o i i i o _ d d d d d d d d d d d d d d d d d d d d d d d d d d d
-            d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d
-            d d d d d d d d o _ d d d d d d d d d d d d d d d d d d d d d s d d o d d d d d d d d o
-            i i i o d d d d d d o d d d d d d d d o _
+        Ir::eval(&insts![
+            iisiiiisiiiiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiio_
+            dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddo_
+            dddddddddddddddddddddsddoddddddddoiiioddddddoddddddddo_
         ])
     );
 }
@@ -80,19 +73,19 @@ fn eval() {
 fn bfs_encode() {
     let mut enc = BfsEncoder::new();
     macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt)*]) => {
-        assert_eq!(Some(insts![$($insts)*].into()), enc.encode($acc, $n));
+        assert_eq!(Some(insts![$($insts)*]), enc.encode($acc, $n));
     });
     encode!(0 -> 0 [o]);
-    encode!(0 -> 1 [i o]);
-    encode!(0 -> 2 [i i o]);
-    encode!(0 -> 3 [i i i o]);
-    encode!(0 -> 4 [i i s o]);
-    encode!(0 -> 5 [i i s i o]);
-    encode!(0 -> 6 [i i s i i o]);
-    encode!(0 -> 7 [i i i s d d o]);
-    encode!(0 -> 8 [i i i s d o]);
-    encode!(0 -> 9 [i i i s o]);
-    encode!(0 -> 10 [i i i s i o]);
+    encode!(0 -> 1 [io]);
+    encode!(0 -> 2 [iio]);
+    encode!(0 -> 3 [iiio]);
+    encode!(0 -> 4 [iiso]);
+    encode!(0 -> 5 [iisio]);
+    encode!(0 -> 6 [iisiio]);
+    encode!(0 -> 7 [iiisddo]);
+    encode!(0 -> 8 [iiisdo]);
+    encode!(0 -> 9 [iiiso]);
+    encode!(0 -> 10 [iiisio]);
 }
 
 #[ignore]

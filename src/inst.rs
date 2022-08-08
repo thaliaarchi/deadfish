@@ -82,6 +82,22 @@ impl Inst {
         let (ir, _) = Ir::eval(insts);
         Self::encode(&ir)
     }
+
+    #[must_use]
+    pub fn parse<B: AsRef<[u8]>>(src: B) -> Vec<Inst> {
+        let src = src.as_ref();
+        let mut insts = Vec::with_capacity(src.len());
+        for c in src {
+            insts.push(match c {
+                b'i' => Inst::I,
+                b'd' => Inst::D,
+                b's' => Inst::S,
+                b'o' => Inst::O,
+                _ => Inst::Blank,
+            });
+        }
+        insts
+    }
 }
 
 #[must_use]
