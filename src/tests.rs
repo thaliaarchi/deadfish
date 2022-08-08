@@ -70,36 +70,36 @@ fn eval() {
 }
 
 #[test]
-fn bfs_encode() {
-    let mut enc = BfsEncoder::new();
-    macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt)*]) => {
-        assert_eq!(Some(insts![$($insts)*]), enc.encode($acc, $n));
-    });
-    encode!(0 -> 0 [o]);
-    encode!(0 -> 1 [io]);
-    encode!(0 -> 2 [iio]);
-    encode!(0 -> 3 [iiio]);
-    encode!(0 -> 4 [iiso]);
-    encode!(0 -> 5 [iisio]);
-    encode!(0 -> 6 [iisiio]);
-    encode!(0 -> 7 [iiisddo]);
-    encode!(0 -> 8 [iiisdo]);
-    encode!(0 -> 9 [iiiso]);
-    encode!(0 -> 10 [iiisio]);
+fn compare_heuristic() {
+    compare_encode(|acc, n| Some(Inst::encode_number(acc, n)))
 }
 
 #[test]
-fn compare_code_golf() {
-    let mut b = Builder::new(0);
+fn compare_bfs() {
+    let mut enc = BfsEncoder::with_bound(16);
+    compare_encode(|acc, n| enc.encode(acc, n));
+}
+
+fn compare_encode<F: FnMut(i32, i32) -> Option<Vec<Inst>>>(mut f: F) {
     macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt),+]) => {
-        b.push_number($n);
-        for cg_path in [$(insts![$insts]),+] {
-            assert!(b.insts().len() <= cg_path.len());
-            assert_eq!($n, Inst::eval(&cg_path, $acc), "{:?}", cg_path);
+        if let Some(path) = f($acc, $n) {
+            let known = [$(insts![$insts]),+];
+            for known_path in &known {
+                assert_eq!($n, Inst::eval(known_path, $acc), "{:?}", known_path);
+            }
+            assert!(
+                known.iter().find(|&known_path| &path == known_path).is_some(),
+                "path {:?} not in {:?}",
+                path,
+                known,
+            );
+        } else {
+            println!("Unable to encode {} -> {}", $acc, $n);
         }
-        b.reset(0);
     });
-    // The shortest paths from Code Golf
+
+    // The encodings for 0 -> 1..256 are the shortest solutions from Code Golf,
+    // that do not output partial values.
     // https://codegolf.stackexchange.com/questions/40124/short-deadfish-numbers
     encode!(0 -> 0 [o]);
     encode!(0 -> 1 [io]);
@@ -359,6 +359,21 @@ fn compare_code_golf() {
     encode!(0 -> 255 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
 
     encode!(0 -> 257 [iissisddddddddddddddddddddddddddddddddo]);
+
+    // "Hello, World!"
+    encode!(0 -> 72 [iiisdsiiiiiiiio]);
+    encode!(72 -> 101 [ssssiiisisio]);
+    encode!(101 -> 108 [iiiiiiio]);
+    encode!(108 -> 108 [o]);
+    encode!(108 -> 111 [iiio]);
+    encode!(111 -> 44 [isssiiisddsdddddo]);
+    encode!(44 -> 32 [ddddddddddddo]);
+    encode!(32 -> 87 [sssiiissiiiiiio]);
+    encode!(87 -> 111 [issssiiisiisddddddddddo]);
+    encode!(111 -> 114 [iiio]);
+    encode!(114 -> 108 [ddddddo]);
+    encode!(108 -> 100 [ddddddddo]);
+    encode!(100 -> 33 [ssssiisiisdddo]);
 }
 
 #[ignore]
