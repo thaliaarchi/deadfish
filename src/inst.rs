@@ -64,8 +64,8 @@ impl Inst {
 
     #[must_use]
     #[inline]
-    pub fn eval(insts: &[Inst]) -> i32 {
-        insts.iter().fold(0, |acc, inst| inst.apply(acc))
+    pub fn eval(insts: &[Inst], acc: i32) -> i32 {
+        insts.iter().fold(acc, |acc, inst| inst.apply(acc))
     }
 
     #[must_use]
