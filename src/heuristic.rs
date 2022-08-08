@@ -28,6 +28,7 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: i32) {
     let (offsets_from, len_from) = encode_from_zero(n);
     let len = offset_to.unsigned_abs() as usize + squares_to as usize + len_from;
 
+    let start = b.insts().len();
     if len < n.abs_diff(acc) as usize {
         b.offset(offset_to);
         b.square(squares_to);
@@ -42,7 +43,7 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: i32) {
         b.offset(n - acc);
     }
     b.push(Inst::O);
-    debug_assert_eq!(b.acc(), n);
+    debug_assert_eq!(b.acc(), n, "{:?}", &b.insts()[start..]);
 }
 
 #[must_use]
@@ -70,9 +71,8 @@ fn nearest_sqrt(n: u32) -> (u32, i32) {
     let ceil = sqrt.ceil() as u32;
     let floor_diff = n - floor * floor;
     let ceil_diff = ceil * ceil - n;
-    // TODO: Avoid crossing over 256 with offset or squaring to it
-    // Avoid squaring to 1 << 32
-    if ceil == 65536 || floor_diff < ceil_diff {
+    // Choose the closer square root and avoid squaring to 256 or 1 << 32
+    if floor_diff < ceil_diff && floor != 16 || ceil == 16 || ceil == 65536 {
         (floor, floor_diff as i32)
     } else {
         (ceil, -(ceil_diff as i32))

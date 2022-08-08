@@ -357,11 +357,13 @@ fn compare_code_golf() {
     encode!(0 -> 253 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
     encode!(0 -> 254 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
     encode!(0 -> 255 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
+
+    encode!(0 -> 257 [iissisddddddddddddddddddddddddddddddddo]);
 }
 
 #[ignore]
 #[test]
-fn slow_encode() {
+fn slow_bfs() {
     // "Wo" in, e.g., "Hello, World!"
     let acc = 87;
     let n = 111;
