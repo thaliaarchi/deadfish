@@ -20,50 +20,59 @@ use std::collections::VecDeque;
 
 use crate::{normalize, Inst};
 
-pub fn encode_via_zero(insts: &mut Vec<Inst>, acc: i32, n: i32) {
+pub fn encode(insts: &mut Vec<Inst>, acc: i32, n: i32) {
     let acc = normalize(acc);
     let n = normalize(n);
 
-    if acc != 0 {
-        let (offset, squares) = encode_to_zero(acc);
-        append_offset(insts, offset);
-        insts.extend((0..squares).map(|_| Inst::S));
-    }
+    let (offset_to, squares_to) = encode_to_zero(acc);
+    let (offsets_from, len_from) = encode_from_zero(n);
+    let len = offset_to.unsigned_abs() as usize + squares_to as usize + len_from;
 
-    if n != 0 {
-        let offsets = encode_from_zero(n);
-        append_offset(insts, offsets[0]);
-        for &offset in offsets.iter().skip(1) {
-            insts.push(Inst::S);
-            append_offset(insts, offset);
+    if len < n.abs_diff(acc) as usize {
+        push_offset(insts, offset_to);
+        push_repeat(insts, Inst::S, squares_to);
+        if let Some(&first) = offsets_from.get(0) {
+            push_offset(insts, first);
+            for &offset in offsets_from.iter().skip(1) {
+                insts.push(Inst::S);
+                push_offset(insts, offset);
+            }
         }
+    } else {
+        push_offset(insts, n - acc);
     }
-
     insts.push(Inst::O);
 }
 
-fn append_offset(insts: &mut Vec<Inst>, offset: i32) {
+fn push_offset(insts: &mut Vec<Inst>, offset: i32) {
     let (direction, count) = if offset >= 0 {
         (Inst::I, offset as u32)
     } else {
         (Inst::D, -offset as u32)
     };
-    insts.extend((0..count).map(|_| direction));
+    push_repeat(insts, direction, count);
+}
+
+fn push_repeat(insts: &mut Vec<Inst>, inst: Inst, count: u32) {
+    insts.extend((0..count).map(|_| inst));
 }
 
 #[must_use]
-fn encode_from_zero(n: i32) -> VecDeque<i32> {
+fn encode_from_zero(n: i32) -> (VecDeque<i32>, usize) {
     let mut n = n as u32;
     let mut offsets = VecDeque::new();
-    loop {
-        if n < 4 {
-            offsets.push_front(n as i32);
-            return offsets;
-        }
+    let mut len = 0;
+    while n >= 4 {
         let (sqrt, offset) = nearest_sqrt(n);
         offsets.push_front(offset);
+        len += offset.unsigned_abs() as usize + 1;
         n = sqrt;
     }
+    if n != 0 {
+        offsets.push_front(n as i32);
+        len += n as usize;
+    }
+    (offsets, len)
 }
 
 #[inline]

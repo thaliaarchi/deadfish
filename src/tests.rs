@@ -77,7 +77,7 @@ fn eval() {
 }
 
 #[test]
-fn encode() {
+fn bfs_encode() {
     let mut enc = BfsEncoder::new();
     assert_eq!(insts![o], enc.encode(0, 0));
     assert_eq!(insts![i o], enc.encode(0, 1));
@@ -100,7 +100,7 @@ fn slow_encode() {
     let n = 111;
 
     let mut heuristic_path = Vec::new();
-    encode_via_zero(&mut heuristic_path, acc, n);
+    encode(&mut heuristic_path, acc, n);
 
     let mut enc = BfsEncoder::new();
     let path = enc.encode(acc, n);
