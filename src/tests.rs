@@ -79,17 +79,20 @@ fn eval() {
 #[test]
 fn bfs_encode() {
     let mut enc = BfsEncoder::new();
-    assert_eq!(insts![o], enc.encode(0, 0));
-    assert_eq!(insts![i o], enc.encode(0, 1));
-    assert_eq!(insts![i i o], enc.encode(0, 2));
-    assert_eq!(insts![i i i o], enc.encode(0, 3));
-    assert_eq!(insts![i i s o], enc.encode(0, 4));
-    assert_eq!(insts![i i s i o], enc.encode(0, 5));
-    assert_eq!(insts![i i s i i o], enc.encode(0, 6));
-    assert_eq!(insts![i i i s d d o], enc.encode(0, 7));
-    assert_eq!(insts![i i i s d o], enc.encode(0, 8));
-    assert_eq!(insts![i i i s o], enc.encode(0, 9));
-    assert_eq!(insts![i i i s i o], enc.encode(0, 10));
+    macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt)*]) => {
+        assert_eq!(Some(insts![$($insts)*].into()), enc.encode($acc, $n));
+    });
+    encode!(0 -> 0 [o]);
+    encode!(0 -> 1 [i o]);
+    encode!(0 -> 2 [i i o]);
+    encode!(0 -> 3 [i i i o]);
+    encode!(0 -> 4 [i i s o]);
+    encode!(0 -> 5 [i i s i o]);
+    encode!(0 -> 6 [i i s i i o]);
+    encode!(0 -> 7 [i i i s d d o]);
+    encode!(0 -> 8 [i i i s d o]);
+    encode!(0 -> 9 [i i i s o]);
+    encode!(0 -> 10 [i i i s i o]);
 }
 
 #[ignore]
@@ -103,7 +106,7 @@ fn slow_encode() {
     encode(&mut heuristic_path, acc, n);
 
     let mut enc = BfsEncoder::new();
-    let path = enc.encode(acc, n);
+    let bfs_path = enc.encode(acc, n);
 
-    assert_eq!(heuristic_path, path);
+    assert_eq!(Some(heuristic_path), bfs_path);
 }

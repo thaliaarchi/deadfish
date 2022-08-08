@@ -72,7 +72,7 @@ impl Inst {
     #[inline]
     pub fn encode(ir: &[Ir]) -> Vec<Inst> {
         let mut b = Builder::new();
-        b.append_ir(ir);
+        b.push_ir(ir);
         b.into()
     }
 

@@ -6,13 +6,12 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use crate::{BfsEncoder, Inst, Ir};
+use crate::{encode, normalize, Inst, Ir};
 
 #[derive(Clone, Debug)]
 pub struct Builder {
     insts: Vec<Inst>,
     acc: i32,
-    encoder: BfsEncoder,
 }
 
 impl Builder {
@@ -25,11 +24,7 @@ impl Builder {
     #[must_use]
     #[inline]
     pub fn with_acc(acc: i32) -> Self {
-        Builder {
-            acc,
-            insts: Vec::new(),
-            encoder: BfsEncoder::new(),
-        }
+        Builder { acc, insts: Vec::new() }
     }
 
     #[must_use]
@@ -46,37 +41,36 @@ impl Builder {
 
     /// Encodes `n` as Deadfish instructions.
     #[inline]
-    pub fn append_number(&mut self, n: i32) {
-        let path = self.encoder.encode(self.acc, n);
-        let n1 = self.append_insts(&path);
-        debug_assert_eq!(n, n1);
+    pub fn push_number(&mut self, n: i32) {
+        encode(&mut self.insts, self.acc, n);
+        self.acc = normalize(n);
     }
 
     #[inline]
-    pub fn append_ir(&mut self, ir: &[Ir]) {
+    pub fn push_ir(&mut self, ir: &[Ir]) {
         for &inst in ir {
             if let Ir::Number(n) = inst {
-                self.append_number(n);
+                self.push_number(n);
             }
         }
     }
 
     #[inline]
-    pub fn append_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) {
+    pub fn push_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) {
         for n in numbers {
-            self.append_number(n.into());
+            self.push_number(n.into());
         }
     }
 
     #[inline]
-    pub fn append_str(&mut self, s: &str) {
+    pub fn push_str(&mut self, s: &str) {
         for n in s.chars() {
-            self.append_number(n as i32);
+            self.push_number(n as i32);
         }
     }
 
     #[inline]
-    pub fn append_insts(&mut self, insts: &[Inst]) -> i32 {
+    pub fn append(&mut self, insts: &[Inst]) -> i32 {
         self.insts.reserve(insts.len());
         for &inst in insts {
             self.push(inst);

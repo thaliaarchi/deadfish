@@ -6,7 +6,7 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use fxhash::FxBuildHasher;
 
@@ -58,7 +58,7 @@ impl BfsEncoder {
 
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
     #[must_use]
-    pub fn try_encode(&mut self, acc: i32, n: i32) -> Option<Vec<Inst>> {
+    pub fn encode(&mut self, acc: i32, n: i32) -> Option<Vec<Inst>> {
         self.queue.push(Node {
             acc,
             inst: None,
@@ -89,17 +89,6 @@ impl BfsEncoder {
         None
     }
 
-    #[must_use]
-    pub fn encode(&mut self, acc: i32, n: i32) -> Vec<Inst> {
-        match self.try_encode(acc, n) {
-            Some(path) => path,
-            None => panic!(
-                "Unable to encode {acc} -> {n} within {} instructions",
-                self.max_len,
-            ),
-        }
-    }
-
     #[inline]
     fn queue_next(&mut self) -> Option<(usize, Node)> {
         let i = self.index;
@@ -112,21 +101,20 @@ impl BfsEncoder {
     }
 
     fn path_from_queue(&mut self, tail: usize) -> Vec<Inst> {
-        let mut path = Vec::new();
+        let mut path = VecDeque::new();
+        path.push_front(Inst::O);
         let mut index = tail;
         loop {
             let node = self.queue[index];
             match node.inst {
                 Some(inst) => {
-                    path.push(inst);
+                    path.push_front(inst);
                     index = node.prev;
                 }
                 None => break,
             }
         }
-        path.reverse();
-        path.push(Inst::O);
-        path
+        path.into()
     }
 
     #[inline]
