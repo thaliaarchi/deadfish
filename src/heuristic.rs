@@ -101,19 +101,19 @@ const fn encode_to_zero(acc: i32) -> (i32, u32) {
 const fn encode_to_zero_no_overflow(acc: i32) -> (i32, u32) {
     const LOW_16: u32 = (4 + 16) / 2;
     const LOW_256: u32 = (16 + 256) / 2;
-    const LOW_65536: u32 = (256 + 65536) / 2 + 1; // Add 1 to prefer decrement
-    const LOW_NEG: u32 = u32::MAX / 2 + 65536 / 2;
+    const LOW_NEG: u32 = u32::MAX / 2 + 256 / 2;
     let (target, squares): (i32, _) = match acc as u32 {
         // Offset to 0
         0..4 => (0, 0),
         // Offset and square to 256
         4..LOW_16 => (4, 2),
         LOW_16..LOW_256 => (16, 1),
-        LOW_256..LOW_65536 => (256, 0),
-        // Offset and square to 1 << 32
-        LOW_65536..LOW_NEG => (65536, 1),
+        LOW_256..LOW_NEG => (256, 0),
         // Offset to -1
         LOW_NEG.. => (-1, 0),
+        // Cases for squaring to `x << 32` are not necessary here, because each
+        // of those roots have at least 16 trailing zeros and are covered by
+        // `encode_to_zero_overflow`.
     };
     (target.wrapping_sub(acc), squares)
 }
