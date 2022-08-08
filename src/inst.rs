@@ -106,6 +106,19 @@ impl Inst {
         }
         insts
     }
+
+    #[must_use]
+    pub fn eval_string(insts: &[Inst]) -> Option<String> {
+        let mut s = String::new();
+        let mut acc = 0;
+        for &inst in insts {
+            match inst {
+                Inst::O => s.push(char::from_u32(acc as u32)?),
+                _ => acc = inst.apply(acc),
+            }
+        }
+        Some(s)
+    }
 }
 
 #[must_use]
@@ -187,5 +200,16 @@ impl Ir {
         }
 
         (ir, acc)
+    }
+
+    #[must_use]
+    pub fn eval_string(ir: &[Ir]) -> Option<String> {
+        let mut s = String::new();
+        for &inst in ir {
+            if let Ir::Number(n) = inst {
+                s.push(char::from_u32(n as u32)?);
+            }
+        }
+        Some(s)
     }
 }

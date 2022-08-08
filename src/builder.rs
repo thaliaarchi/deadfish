@@ -66,10 +66,16 @@ impl Builder {
     }
 
     #[inline]
-    pub fn push_str(&mut self, s: &str) {
+    pub fn push_string(&mut self, s: &str) {
         for n in s.chars() {
-            // TODO: Represent 256
-            self.push_number(n as i32);
+            // Encode Ā (256) as its decomposition, since it cannot be
+            // represented in Deadfish as-is.
+            if n == 'Ā' {
+                self.push_number('A' as i32);
+                self.push_number('\u{0304}' as i32);
+            } else {
+                self.push_number(n as i32);
+            }
         }
     }
 
@@ -149,4 +155,13 @@ impl Default for Builder {
     fn default() -> Self {
         Self::new(0)
     }
+}
+
+#[test]
+fn decompose_256() {
+    let composed = "Ātra beigto zivju kodēšana";
+    let decomposed = "A\u{0304}tra beigto zivju kodēšana";
+    let mut b = Builder::new(0);
+    b.push_string(composed);
+    assert_eq!(decomposed, Inst::eval_string(b.insts()).unwrap());
 }
