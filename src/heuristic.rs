@@ -18,10 +18,10 @@
 
 use std::collections::VecDeque;
 
-use crate::{normalize, Inst};
+use crate::{normalize, Builder, Inst};
 
-pub fn encode(insts: &mut Vec<Inst>, acc: i32, n: i32) {
-    let acc = normalize(acc);
+pub(crate) fn heuristic_encode(b: &mut Builder, n: i32) {
+    let acc = b.acc();
     let n = normalize(n);
 
     let (offset_to, squares_to) = encode_to_zero(acc);
@@ -29,32 +29,20 @@ pub fn encode(insts: &mut Vec<Inst>, acc: i32, n: i32) {
     let len = offset_to.unsigned_abs() as usize + squares_to as usize + len_from;
 
     if len < n.abs_diff(acc) as usize {
-        push_offset(insts, offset_to);
-        push_repeat(insts, Inst::S, squares_to);
+        b.offset(offset_to);
+        b.square(squares_to);
         if let Some(&first) = offsets_from.get(0) {
-            push_offset(insts, first);
+            b.offset(first);
             for &offset in offsets_from.iter().skip(1) {
-                insts.push(Inst::S);
-                push_offset(insts, offset);
+                b.push(Inst::S);
+                b.offset(offset);
             }
         }
     } else {
-        push_offset(insts, n - acc);
+        b.offset(n - acc);
     }
-    insts.push(Inst::O);
-}
-
-fn push_offset(insts: &mut Vec<Inst>, offset: i32) {
-    let (direction, count) = if offset >= 0 {
-        (Inst::I, offset as u32)
-    } else {
-        (Inst::D, -offset as u32)
-    };
-    push_repeat(insts, direction, count);
-}
-
-fn push_repeat(insts: &mut Vec<Inst>, inst: Inst, count: u32) {
-    insts.extend((0..count).map(|_| inst));
+    b.push(Inst::O);
+    debug_assert_eq!(b.acc(), n);
 }
 
 #[must_use]

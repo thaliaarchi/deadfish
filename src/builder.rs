@@ -6,7 +6,7 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use crate::{encode, normalize, Inst, Ir};
+use crate::{heuristic_encode, normalize, Inst, Ir};
 
 #[derive(Clone, Debug)]
 pub struct Builder {
@@ -17,14 +17,11 @@ pub struct Builder {
 impl Builder {
     #[must_use]
     #[inline]
-    pub fn new() -> Self {
-        Self::with_acc(0)
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn with_acc(acc: i32) -> Self {
-        Builder { acc, insts: Vec::new() }
+    pub fn new(acc: i32) -> Self {
+        Builder {
+            insts: Vec::new(),
+            acc: normalize(acc),
+        }
     }
 
     #[must_use]
@@ -33,16 +30,22 @@ impl Builder {
         self.acc
     }
 
+    #[must_use]
+    #[inline]
+    pub fn insts(&self) -> &[Inst] {
+        &self.insts
+    }
+
     #[inline]
     pub fn reset(&mut self, acc: i32) {
-        self.acc = acc;
+        self.acc = normalize(acc);
         self.insts.clear();
     }
 
     /// Encodes `n` as Deadfish instructions.
     #[inline]
     pub fn push_number(&mut self, n: i32) {
-        encode(&mut self.insts, self.acc, n);
+        heuristic_encode(self, n);
         self.acc = normalize(n);
     }
 
@@ -65,16 +68,15 @@ impl Builder {
     #[inline]
     pub fn push_str(&mut self, s: &str) {
         for n in s.chars() {
+            // TODO: Represent 256
             self.push_number(n as i32);
         }
     }
 
     #[inline]
     pub fn append(&mut self, insts: &[Inst]) -> i32 {
-        self.insts.reserve(insts.len());
-        for &inst in insts {
-            self.push(inst);
-        }
+        self.insts.extend_from_slice(insts);
+        self.acc = Inst::eval(insts, self.acc);
         self.acc
     }
 
@@ -85,16 +87,55 @@ impl Builder {
         self.acc
     }
 
-    #[must_use]
     #[inline]
-    pub fn insts(&self) -> (&[Inst], i32) {
-        (&self.insts, self.acc)
+    pub fn offset(&mut self, offset: i32) -> i32 {
+        if offset > 0 {
+            self.add(offset as u32)
+        } else if offset < 0 {
+            self.sub(offset.unsigned_abs())
+        } else {
+            self.acc
+        }
     }
 
-    #[must_use]
+    pub fn add(&mut self, x: u32) -> i32 {
+        self.push_repeat(Inst::I, x);
+        let acc = self.acc as u32;
+        self.acc = if acc < 256 && acc.saturating_add(x) >= 256 || acc.saturating_add(x) == u32::MAX
+        {
+            0
+        } else {
+            acc.wrapping_add(x) as i32
+        };
+        self.acc
+    }
+
+    pub fn sub(&mut self, x: u32) -> i32 {
+        self.push_repeat(Inst::D, x);
+        let acc = self.acc as u32;
+        self.acc = if acc > 256 && acc.saturating_sub(x) <= 256 || acc.saturating_sub(x) == 0 {
+            0
+        } else {
+            acc.wrapping_sub(x) as i32
+        };
+        self.acc
+    }
+
+    pub fn square(&mut self, count: u32) -> i32 {
+        self.push_repeat(Inst::S, count);
+        for _ in 0..count {
+            self.acc = self.acc.wrapping_mul(self.acc);
+            if self.acc == 256 || self.acc == -1 {
+                self.acc = 0;
+                break;
+            }
+        }
+        self.acc
+    }
+
     #[inline]
-    pub fn done(self) -> (Vec<Inst>, i32) {
-        (self.insts, self.acc)
+    fn push_repeat(&mut self, inst: Inst, count: u32) {
+        self.insts.extend((0..count).map(|_| inst));
     }
 }
 
@@ -106,6 +147,6 @@ impl From<Builder> for Vec<Inst> {
 
 impl Default for Builder {
     fn default() -> Self {
-        Self::new()
+        Self::new(0)
     }
 }

@@ -70,8 +70,16 @@ impl Inst {
 
     #[must_use]
     #[inline]
+    pub fn encode_number(acc: i32, n: i32) -> Vec<Inst> {
+        let mut b = Builder::new(acc);
+        b.push_number(n);
+        b.into()
+    }
+
+    #[must_use]
+    #[inline]
     pub fn encode(ir: &[Ir]) -> Vec<Inst> {
-        let mut b = Builder::new();
+        let mut b = Builder::new(0);
         b.push_ir(ir);
         b.into()
     }
@@ -103,7 +111,7 @@ impl Inst {
 #[must_use]
 #[inline]
 pub const fn normalize(n: i32) -> i32 {
-    if n == -1 || n == 256 {
+    if n == 256 || n == -1 {
         0
     } else {
         n

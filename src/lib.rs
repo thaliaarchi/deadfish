@@ -45,7 +45,7 @@
 
 pub use bfs::*;
 pub use builder::*;
-pub use heuristic::*;
+pub(crate) use heuristic::*;
 pub use inst::*;
 
 mod bfs;

@@ -90,15 +90,14 @@ fn bfs_encode() {
 
 #[test]
 fn compare_code_golf() {
-    let mut path = Vec::new();
+    let mut b = Builder::new(0);
     macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt),+]) => {
-        encode(&mut path, $acc, $n);
-        assert_eq!($n, Inst::eval(&path, $acc), "{:?}", path);
+        b.push_number($n);
         for cg_path in [$(insts![$insts]),+] {
-            assert!(path.len() <= cg_path.len());
+            assert!(b.insts().len() <= cg_path.len());
             assert_eq!($n, Inst::eval(&cg_path, $acc), "{:?}", cg_path);
         }
-        path.clear();
+        b.reset(0);
     });
     // The shortest paths from Code Golf
     // https://codegolf.stackexchange.com/questions/40124/short-deadfish-numbers
@@ -367,8 +366,7 @@ fn slow_encode() {
     let acc = 87;
     let n = 111;
 
-    let mut heuristic_path = Vec::new();
-    encode(&mut heuristic_path, acc, n);
+    let heuristic_path = Inst::encode_number(acc, n);
 
     let mut enc = BfsEncoder::new();
     let bfs_path = enc.encode(acc, n);
