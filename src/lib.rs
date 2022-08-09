@@ -33,7 +33,7 @@
 //!     with [source archives](https://web.archive.org/web/20071019052558/http://www.jonathantoddskinner.com/projects/deadfish.tar.gz)
 //! - [Esolang wiki](https://esolangs.org/wiki/Deadfish)
 
-#![feature(exclusive_range_pattern)]
+#![feature(box_syntax, exclusive_range_pattern)]
 #![warn(clippy::pedantic)]
 #![allow(
     clippy::cast_lossless,

@@ -71,31 +71,31 @@ fn eval() {
 
 #[test]
 fn compare_heuristic() {
-    compare_encode(|acc, n| Some(Inst::encode_number(acc, n)))
+    compare_encode(box |acc, n| Some(Inst::encode_number(acc, n)))
 }
 
 #[test]
 fn compare_bfs() {
     let mut enc = BfsEncoder::with_bound(16);
-    compare_encode(|acc, n| enc.encode(acc, n));
+    compare_encode(box move |acc, n| enc.encode(acc, n));
 }
 
-fn compare_encode<F: FnMut(i32, i32) -> Option<Vec<Inst>>>(mut f: F) {
-    macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt),+]) => {
-        if let Some(path) = f($acc, $n) {
-            let known = [$(insts![$insts]),+];
-            for known_path in &known {
-                assert_eq!($n, Inst::eval(known_path, $acc), "{:?}", known_path);
+fn compare_encode(mut f: Box<dyn FnMut(i32, i32) -> Option<Vec<Inst>>>) {
+    fn compare(acc: i32, n: i32, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]) {
+        if let Some(path) = path {
+            for p in known_paths {
+                assert_eq!(n, Inst::eval(p, acc), "{:?}", p);
             }
             assert!(
-                known.iter().find(|&known_path| &path == known_path).is_some(),
-                "path {:?} not in {:?}",
-                path,
-                known,
+                known_paths.iter().find(|&p| &path == p).is_some(),
+                "path {path:?} not in {known_paths:?}",
             );
         } else {
-            println!("Unable to encode {} -> {}", $acc, $n);
+            println!("Unable to encode {acc} -> {n}");
         }
+    }
+    macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt),+]) => {
+        compare($acc, $n, f($acc, $n), &[$(insts![$insts]),+]);
     });
 
     // The encodings for 0 -> 1..256 are the shortest solutions from Code Golf,
