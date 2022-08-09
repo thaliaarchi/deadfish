@@ -64,6 +64,71 @@ impl Inst {
 
     #[must_use]
     #[inline]
+    pub const fn add(acc: i32, x: u32) -> i32 {
+        let acc = normalize(acc) as u32;
+        let add = acc.saturating_add(x);
+        if acc < 256 && add >= 256 || add == u32::MAX {
+            0
+        } else {
+            add as i32
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn sub(acc: i32, x: u32) -> i32 {
+        let acc = normalize(acc) as u32;
+        let sub = acc.saturating_sub(x);
+        if acc > 256 && sub <= 256 {
+            0
+        } else {
+            sub as i32
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn square(acc: i32, count: u32) -> i32 {
+        let mut acc = normalize(acc);
+        for _ in 0..count {
+            acc = normalize(acc.wrapping_mul(acc));
+            if acc == 0 {
+                break;
+            }
+        }
+        acc
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn saturating_add(acc: i32, x: u32) -> i32 {
+        let acc = normalize(acc) as u32;
+        let add = acc.saturating_add(x);
+        if acc < 256 && add >= 256 {
+            255
+        } else if add == u32::MAX {
+            -2
+        } else {
+            add as i32
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn saturating_sub(acc: i32, x: u32) -> i32 {
+        let acc = normalize(acc) as u32;
+        let sub = acc.saturating_sub(x);
+        if acc > 256 && sub <= 256 {
+            257
+        } else if sub == 0 && acc != 0 {
+            1
+        } else {
+            sub as i32
+        }
+    }
+
+    #[must_use]
+    #[inline]
     pub fn eval(insts: &[Inst], acc: i32) -> i32 {
         insts.iter().fold(acc, |acc, inst| inst.apply(acc))
     }

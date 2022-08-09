@@ -106,36 +106,19 @@ impl Builder {
 
     pub fn add(&mut self, x: u32) -> i32 {
         self.push_repeat(Inst::I, x);
-        let acc = self.acc as u32;
-        self.acc = if acc < 256 && acc.saturating_add(x) >= 256 || acc.saturating_add(x) == u32::MAX
-        {
-            0
-        } else {
-            acc.wrapping_add(x) as i32
-        };
+        self.acc = Inst::add(self.acc, x);
         self.acc
     }
 
     pub fn sub(&mut self, x: u32) -> i32 {
         self.push_repeat(Inst::D, x);
-        let acc = self.acc as u32;
-        self.acc = if acc > 256 && acc.saturating_sub(x) <= 256 || acc.saturating_sub(x) == 0 {
-            0
-        } else {
-            acc.wrapping_sub(x) as i32
-        };
+        self.acc = Inst::sub(self.acc, x);
         self.acc
     }
 
     pub fn square(&mut self, count: u32) -> i32 {
         self.push_repeat(Inst::S, count);
-        for _ in 0..count {
-            self.acc = self.acc.wrapping_mul(self.acc);
-            if self.acc == 256 || self.acc == -1 {
-                self.acc = 0;
-                break;
-            }
-        }
+        self.acc = Inst::square(self.acc, count);
         self.acc
     }
 
