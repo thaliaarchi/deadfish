@@ -42,7 +42,6 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: i32) {
     } else {
         b.offset(n - acc);
     }
-    b.push(Inst::O);
     debug_assert_eq!(b.acc(), n, "{:?}", &b.insts()[start..]);
 }
 

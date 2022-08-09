@@ -10,7 +10,7 @@ use std::collections::{HashSet, VecDeque};
 
 use fxhash::FxBuildHasher;
 
-use crate::Inst;
+use crate::{heuristic_encode, Builder, Inst};
 
 #[derive(Clone, Debug)]
 pub struct BfsEncoder {
@@ -56,9 +56,16 @@ impl BfsEncoder {
         }
     }
 
+    #[inline]
+    pub fn set_bound(&mut self, max_len: usize) {
+        self.max_len = max_len.try_into().unwrap_or(u16::MAX);
+    }
+
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
+    /// Returns a path, if one could be constructed, and whether it's optimal.
     #[must_use]
-    pub fn encode(&mut self, acc: i32, n: i32) -> Option<Vec<Inst>> {
+    pub fn encode(&mut self, acc: i32, n: i32) -> (Option<Vec<Inst>>, bool) {
+        let mut first_zero = None;
         self.queue.push(Node {
             acc,
             inst: None,
@@ -67,9 +74,13 @@ impl BfsEncoder {
         });
         while let Some((i, node)) = self.queue_next() {
             if node.acc == n {
-                let path = self.path_from_queue(i);
+                let mut path = self.path_from_queue(i);
+                path.push(Inst::O);
                 self.clear();
-                return Some(path);
+                return (Some(path), true);
+            }
+            if node.acc == 0 && first_zero == None {
+                first_zero = Some(i);
             }
             if node.len < self.max_len {
                 for inst in [Inst::I, Inst::D, Inst::S] {
@@ -85,8 +96,14 @@ impl BfsEncoder {
                 }
             }
         }
+        let path = first_zero.map(|i| {
+            let mut b = Builder::from_insts(self.path_from_queue(i), 0);
+            heuristic_encode(&mut b, n);
+            b.push(Inst::O);
+            b.into()
+        });
         self.clear();
-        None
+        (path, false)
     }
 
     #[inline]
@@ -102,7 +119,6 @@ impl BfsEncoder {
 
     fn path_from_queue(&mut self, tail: usize) -> Vec<Inst> {
         let mut path = VecDeque::new();
-        path.push_front(Inst::O);
         let mut index = tail;
         loop {
             let node = self.queue[index];

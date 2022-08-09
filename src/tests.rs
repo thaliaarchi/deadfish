@@ -77,7 +77,13 @@ fn compare_heuristic() {
 #[test]
 fn compare_bfs() {
     let mut enc = BfsEncoder::with_bound(16);
-    compare_encode(box move |acc, n| enc.encode(acc, n));
+    compare_encode(box move |acc, n| {
+        let (path, optimal) = enc.encode(acc, n);
+        if !optimal {
+            println!("{acc} -> {n} may not be optimal with {path:?}");
+        }
+        path
+    });
 }
 
 fn compare_encode(mut f: Box<dyn FnMut(i32, i32) -> Option<Vec<Inst>>>) {
@@ -382,11 +388,13 @@ fn slow_bfs() {
     // "Wo" in, e.g., "Hello, World!"
     let acc = 87;
     let n = 111;
+    let path = insts![issssiiisiisddddddddddo];
 
-    let heuristic_path = Inst::encode_number(acc, n);
+    assert_eq!(path, Inst::encode_number(acc, n));
 
     let mut enc = BfsEncoder::new();
-    let bfs_path = enc.encode(acc, n);
+    assert_eq!((Some(path.clone()), true), enc.encode(acc, n));
 
-    assert_eq!(Some(heuristic_path), bfs_path);
+    enc.set_bound(8);
+    assert_eq!((Some(path), false), enc.encode(acc, n));
 }

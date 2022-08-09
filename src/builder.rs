@@ -18,10 +18,13 @@ impl Builder {
     #[must_use]
     #[inline]
     pub fn new(acc: i32) -> Self {
-        Builder {
-            insts: Vec::new(),
-            acc: normalize(acc),
-        }
+        Self::from_insts(Vec::new(), acc)
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn from_insts(insts: Vec<Inst>, acc: i32) -> Self {
+        Builder { insts, acc: normalize(acc) }
     }
 
     #[must_use]
@@ -46,6 +49,7 @@ impl Builder {
     #[inline]
     pub fn push_number(&mut self, n: i32) {
         heuristic_encode(self, n);
+        self.insts.push(Inst::O);
         self.acc = normalize(n);
     }
 
