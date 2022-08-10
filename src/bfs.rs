@@ -65,6 +65,10 @@ impl BfsEncoder {
     /// Returns a path, if one could be constructed, and whether it's optimal.
     #[must_use]
     pub fn encode(&mut self, acc: Acc, n: Acc) -> (Option<Vec<Inst>>, bool) {
+        self.queue.clear();
+        self.index = 0;
+        self.visited.clear();
+
         let mut zero_index = None;
         let mut closest_square = None;
 
@@ -76,10 +80,7 @@ impl BfsEncoder {
         });
         while let Some((i, node)) = self.queue_next() {
             if node.acc == n {
-                let mut path = self.path_from_queue(i);
-                path.push(Inst::O);
-                self.clear();
-                return (Some(path), true);
+                return (Some(self.path_from_queue(i)), true);
             }
 
             // Track the shortest path to 0, because a path from 0 to `n` is
@@ -119,19 +120,16 @@ impl BfsEncoder {
         if let Some(i) = zero_index {
             let mut b = Builder::from_insts(self.path_from_queue(i), Acc::new());
             heuristic_encode(&mut b, n);
-            b.push(Inst::O);
             path = Some(b.into_insts());
         }
         if let Some((i, offset, _)) = closest_square {
             let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].acc);
             b.offset(offset);
-            b.push(Inst::O);
             let square_path = b.into_insts();
             if !matches!(&path, Some(path) if path.len() <= square_path.len()) {
                 path = Some(square_path);
             }
         }
-        self.clear();
         (path, false)
     }
 
@@ -160,13 +158,6 @@ impl BfsEncoder {
             }
         }
         path.into()
-    }
-
-    #[inline]
-    fn clear(&mut self) {
-        self.queue.clear();
-        self.index = 0;
-        self.visited.clear();
     }
 }
 

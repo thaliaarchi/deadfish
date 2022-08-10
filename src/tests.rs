@@ -106,7 +106,10 @@ fn compare_heuristic() {
 fn compare_bfs() {
     let mut enc = BfsEncoder::with_bound(16);
     compare_encode(box move |acc, n| {
-        let (path, optimal) = enc.encode(acc, n);
+        let (mut path, optimal) = enc.encode(acc, n);
+        if let Some(path) = &mut path {
+            path.push(Inst::O);
+        }
         if !optimal {
             println!("{acc} -> {n} may not be optimal with {path:?}");
         }
@@ -122,7 +125,7 @@ fn compare_encode(mut f: Box<dyn FnMut(Acc, Acc) -> Option<Vec<Inst>>>) {
             }
             assert!(
                 known_paths.iter().find(|&p| &path == p).is_some(),
-                "path {path:?} not in {known_paths:?}",
+                "{acc} -> {n} path {path:?} not in {known_paths:?}",
             );
         } else {
             println!("Unable to encode {acc} -> {n}");
@@ -134,9 +137,14 @@ fn compare_encode(mut f: Box<dyn FnMut(Acc, Acc) -> Option<Vec<Inst>>>) {
         compare(acc, n, f(acc, n), &[$(insts![$insts]),+]);
     });
 
-    // The encodings for 0 -> 1..256 are the shortest solutions from Code Golf,
-    // that do not output partial values.
+    // The encodings for 0 -> 1..=255 are consistent with the shortest solutions
+    // from Code Golf (excluding those that output partial values) and the table
+    // on the Esolang wiki. The encodings for 0 -> 249..=255 and 0 -> 257 have
+    // not been verified by an exhaustive search with `BfsEncoder`, due to state
+    // explosion.
     // https://codegolf.stackexchange.com/questions/40124/short-deadfish-numbers
+    // https://esolangs.org/wiki/Deadfish/Constants
+
     encode!(0 -> 0 [o]);
     encode!(0 -> 1 [io]);
     encode!(0 -> 2 [iio]);
