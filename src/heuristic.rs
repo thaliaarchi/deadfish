@@ -18,7 +18,7 @@
 
 use std::collections::VecDeque;
 
-use crate::{Acc, Builder, Inst, Offset};
+use crate::{Acc, Builder, Offset};
 
 pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
     let acc = b.acc();
@@ -35,19 +35,13 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
     } else {
         b.offset(offset_to_0);
         b.square(squares_to_0);
-        if let Some(&first) = offsets_from_0.get(0) {
-            b.offset(first);
-            for &offset in offsets_from_0.iter().skip(1) {
-                b.push(Inst::S);
-                b.offset(offset);
-            }
-        }
+        b.offset_squares(&offsets_from_0);
     }
     debug_assert_eq!(n, b.acc(), "acc={acc} {:?}", &b.insts()[start..]);
 }
 
 #[must_use]
-fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
+pub(crate) fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
     let mut n = n;
     let mut offsets = VecDeque::new();
     let mut len = 0;

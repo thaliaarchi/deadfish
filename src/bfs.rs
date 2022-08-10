@@ -65,7 +65,9 @@ impl BfsEncoder {
     /// Returns a path, if one could be constructed, and whether it's optimal.
     #[must_use]
     pub fn encode(&mut self, acc: Acc, n: Acc) -> (Option<Vec<Inst>>, bool) {
-        let mut first_zero = None;
+        let mut zero_index = None;
+        let mut closest_square = None;
+
         self.queue.push(Node {
             acc,
             inst: None,
@@ -79,29 +81,56 @@ impl BfsEncoder {
                 self.clear();
                 return (Some(path), true);
             }
-            if node.acc == 0 && first_zero == None {
-                first_zero = Some(i);
+
+            // Track the shortest path to 0, because a path from 0 to `n` is
+            // usually short
+            if node.acc == 0 && zero_index == None {
+                zero_index = Some(i);
             }
+
             if node.len < self.max_len {
                 for inst in [Inst::I, Inst::D, Inst::S] {
                     let acc = node.acc.apply(inst);
                     if self.visited.insert(acc) {
+                        let path_len = node.len + 1;
                         self.queue.push(Node {
                             acc,
                             inst: Some(inst),
                             prev: i,
-                            len: node.len + 1,
+                            len: path_len,
                         });
+                        let i = self.queue.len();
+
+                        // Track the square that is closest to `n` by an offset
+                        if inst == Inst::S {
+                            if let Some(offset) = acc.offset_to(n) {
+                                let path_len = path_len as usize + offset.len();
+                                if !matches!(closest_square, Some((_, _, len)) if len <= path_len) {
+                                    closest_square = Some((i, offset, path_len));
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-        let path = first_zero.map(|i| {
+
+        let mut path = None;
+        if let Some(i) = zero_index {
             let mut b = Builder::from_insts(self.path_from_queue(i), Acc::new());
             heuristic_encode(&mut b, n);
             b.push(Inst::O);
-            b.into()
-        });
+            path = Some(b.into_insts());
+        }
+        if let Some((i, offset, _)) = closest_square {
+            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].acc);
+            b.offset(offset);
+            b.push(Inst::O);
+            let square_path = b.into_insts();
+            if !matches!(&path, Some(path) if path.len() <= square_path.len()) {
+                path = Some(square_path);
+            }
+        }
         self.clear();
         (path, false)
     }

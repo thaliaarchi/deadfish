@@ -6,6 +6,8 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
+use std::collections::VecDeque;
+
 use crate::{heuristic_encode, Acc, Inst, Offset};
 
 #[derive(Clone, Debug)]
@@ -37,6 +39,12 @@ impl Builder {
     #[inline]
     pub fn insts(&self) -> &[Inst] {
         &self.insts
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn into_insts(self) -> Vec<Inst> {
+        self.insts
     }
 
     #[inline]
@@ -120,6 +128,16 @@ impl Builder {
     #[inline]
     fn push_repeat(&mut self, inst: Inst, count: u32) {
         self.insts.extend((0..count).map(|_| inst));
+    }
+
+    pub(crate) fn offset_squares(&mut self, offsets: &VecDeque<Offset>) {
+        if let Some(&first) = offsets.get(0) {
+            self.offset(first);
+            for &offset in offsets.iter().skip(1) {
+                self.push(Inst::S);
+                self.offset(offset);
+            }
+        }
     }
 }
 
