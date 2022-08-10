@@ -6,7 +6,7 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use crate::{heuristic_encode, Acc, Inst, Ir, Offset};
+use crate::{heuristic_encode, Acc, Inst, Offset};
 
 #[derive(Clone, Debug)]
 pub struct Builder {
@@ -51,15 +51,6 @@ impl Builder {
         heuristic_encode(self, n);
         self.insts.push(Inst::O);
         self.acc = n;
-    }
-
-    #[inline]
-    pub fn push_ir(&mut self, ir: &[Ir]) {
-        for &inst in ir {
-            if let Ir::Number(n) = inst {
-                self.push_number(n);
-            }
-        }
     }
 
     #[inline]

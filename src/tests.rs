@@ -29,44 +29,72 @@ fn eval() {
         (vec![Ir::Prompts(40), Ir::Number(0.into())], Acc::from(0)),
         Ir::eval(&insts![iissisdddddddddddddddddddddddddddddddddo])
     );
-    // "Hello world"
-    assert_eq!(
-        (
-            vec![
-                Ir::Prompts(17),
-                Ir::Number(72.into()),
-                Ir::Prompts(30),
-                Ir::Number(101.into()),
-                Ir::Prompts(8),
-                Ir::Number(108.into()),
-                Ir::Prompts(1),
-                Ir::Number(108.into()),
-                Ir::Prompts(4),
-                Ir::Number(111.into()),
-                Ir::Blanks(1),
-                Ir::Prompts(80),
-                Ir::Number(32.into()),
-                Ir::Blanks(1),
-                Ir::Prompts(25),
-                Ir::Number(119.into()),
-                Ir::Prompts(9),
-                Ir::Number(111.into()),
-                Ir::Prompts(4),
-                Ir::Number(114.into()),
-                Ir::Prompts(7),
-                Ir::Number(108.into()),
-                Ir::Prompts(9),
-                Ir::Number(100.into()),
-                Ir::Blanks(1),
-            ],
-            Acc::from(100),
-        ),
-        Ir::eval(&insts![
-            iisiiiisiiiiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiio_
-            dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddo_
-            dddddddddddddddddddddsddoddddddddoiiioddddddoddddddddo_
-        ])
-    );
+}
+
+#[test]
+fn hello_world() {
+    // "Hello world" from https://esolangs.org/wiki/Deadfish#Example_programs
+    let program = insts![
+        iisiiiisiiiiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiio_
+        dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddo_
+        dddddddddddddddddddddsddoddddddddoiiioddddddoddddddddo_
+    ];
+    // Known to be optimal by BFS
+    let minimized = insts![
+        iiisdsiiiiiiiiossssiiisisioiiiiiiiooiiio
+        isssiisiisddddo
+        sssiiisiisddoddddddddoiiioddddddoddddddddo
+    ];
+    let ir = vec![
+        Ir::Prompts(17),
+        Ir::Number(72.into()),
+        Ir::Prompts(30),
+        Ir::Number(101.into()),
+        Ir::Prompts(8),
+        Ir::Number(108.into()),
+        Ir::Prompts(1),
+        Ir::Number(108.into()),
+        Ir::Prompts(4),
+        Ir::Number(111.into()),
+        Ir::Blanks(1),
+        Ir::Prompts(80),
+        Ir::Number(32.into()),
+        Ir::Blanks(1),
+        Ir::Prompts(25),
+        Ir::Number(119.into()),
+        Ir::Prompts(9),
+        Ir::Number(111.into()),
+        Ir::Prompts(4),
+        Ir::Number(114.into()),
+        Ir::Prompts(7),
+        Ir::Number(108.into()),
+        Ir::Prompts(9),
+        Ir::Number(100.into()),
+        Ir::Blanks(1),
+    ];
+    let shell = ">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> 72
+>> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> 101
+>> >> >> >> >> >> >> >> 108
+>> 108
+>> >> >> >> 111
+>> 
+>> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> 32
+>> 
+>> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> 119
+>> >> >> >> >> >> >> >> >> 111
+>> >> >> >> 114
+>> >> >> >> >> >> >> 108
+>> >> >> >> >> >> >> >> >> 100
+>> 
+";
+
+    assert_eq!((ir, Acc::from(100)), Ir::eval(&program));
+
+    assert_eq!(minimized, Inst::minimize(&program));
+
+    let mut stdout = Vec::new();
+    Inst::interpret(&program, &mut stdout).unwrap();
+    assert_eq!(shell, String::from_utf8(stdout).unwrap());
 }
 
 #[test]

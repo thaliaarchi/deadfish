@@ -6,6 +6,8 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
+use std::io::{self, Write};
+
 use crate::{Acc, Builder};
 
 /// Deadfish instructions.
@@ -41,17 +43,17 @@ impl Inst {
 
     #[must_use]
     #[inline]
-    pub fn encode(ir: &[Ir]) -> Vec<Inst> {
+    pub fn encode_numbers(ir: &Vec<Acc>) -> Vec<Inst> {
         let mut b = Builder::new(Acc::new());
-        b.push_ir(ir);
+        b.push_numbers(ir.iter().copied());
         b.into()
     }
 
     #[must_use]
     #[inline]
     pub fn minimize(insts: &[Inst]) -> Vec<Inst> {
-        let (ir, _) = Ir::eval(insts);
-        Self::encode(&ir)
+        let (numbers, _) = Inst::eval_numbers(insts);
+        Self::encode_numbers(&numbers)
     }
 
     #[must_use]
@@ -71,6 +73,19 @@ impl Inst {
     }
 
     #[must_use]
+    pub fn eval_numbers(insts: &[Inst]) -> (Vec<Acc>, Acc) {
+        let mut numbers = Vec::new();
+        let mut acc = Acc::new();
+        for &inst in insts {
+            match inst {
+                Inst::O => numbers.push(acc),
+                _ => acc = acc.apply(inst),
+            }
+        }
+        (numbers, acc)
+    }
+
+    #[must_use]
     pub fn eval_string(insts: &[Inst]) -> Option<String> {
         let mut s = String::new();
         let mut acc = Acc::new();
@@ -81,6 +96,19 @@ impl Inst {
             }
         }
         Some(s)
+    }
+
+    pub fn interpret<W: Write>(insts: &[Inst], stdout: &mut W) -> io::Result<()> {
+        let mut acc = Acc::new();
+        for &inst in insts {
+            write!(stdout, ">> ")?;
+            match inst {
+                Inst::I | Inst::D | Inst::S => acc = acc.apply(inst),
+                Inst::O => writeln!(stdout, "{acc}")?,
+                Inst::Blank => writeln!(stdout)?,
+            }
+        }
+        stdout.flush()
     }
 }
 
@@ -164,5 +192,24 @@ impl Ir {
             }
         }
         Some(s)
+    }
+
+    pub fn interpret<W: Write>(ir: &[Ir], stdout: &mut W) -> io::Result<()> {
+        for &inst in ir {
+            match inst {
+                Ir::Number(n) => writeln!(stdout, "{n}")?,
+                Ir::Prompts(count) => {
+                    for _ in 0..count {
+                        write!(stdout, ">> ")?;
+                    }
+                }
+                Ir::Blanks(count) => {
+                    for _ in 0..count {
+                        writeln!(stdout)?;
+                    }
+                }
+            }
+        }
+        stdout.flush()
     }
 }
