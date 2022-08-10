@@ -18,74 +18,58 @@
 
 use std::collections::VecDeque;
 
-use crate::{normalize, Builder, Inst};
+use crate::{Acc, Builder, Inst, Offset};
 
-pub(crate) fn heuristic_encode(b: &mut Builder, n: i32) {
+pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
     let acc = b.acc();
-    let n = normalize(n);
 
-    let (offset_to, squares_to) = encode_to_zero(acc);
-    let (offsets_from, len_from) = encode_from_zero(n);
-    let len = offset_to.unsigned_abs() as usize + squares_to as usize + len_from;
+    let simple_offset = acc.offset_to(n);
+
+    let (offset_to_0, squares_to_0) = encode_to_0(acc);
+    let (offsets_from_0, len_from_0) = encode_from_0(n);
+    let len_via_0 = offset_to_0.len() + squares_to_0 as usize + len_from_0;
 
     let start = b.insts().len();
-    if len < n.abs_diff(acc) as usize {
-        b.offset(offset_to);
-        b.square(squares_to);
-        if let Some(&first) = offsets_from.get(0) {
+    if simple_offset.is_some_and(|&offset| offset.len() <= len_via_0) {
+        b.offset(simple_offset.unwrap());
+    } else {
+        b.offset(offset_to_0);
+        b.square(squares_to_0);
+        if let Some(&first) = offsets_from_0.get(0) {
             b.offset(first);
-            for &offset in offsets_from.iter().skip(1) {
+            for &offset in offsets_from_0.iter().skip(1) {
                 b.push(Inst::S);
                 b.offset(offset);
             }
         }
-    } else {
-        b.offset(n - acc);
     }
-    debug_assert_eq!(b.acc(), n, "{:?}", &b.insts()[start..]);
+    debug_assert_eq!(n, b.acc(), "acc={acc} {:?}", &b.insts()[start..]);
 }
 
 #[must_use]
-fn encode_from_zero(n: i32) -> (VecDeque<i32>, usize) {
-    let mut n = n as u32;
+fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
+    let mut n = n;
     let mut offsets = VecDeque::new();
     let mut len = 0;
     while n >= 4 {
-        let (sqrt, offset) = nearest_sqrt(n);
+        let (sqrt, offset) = n.nearest_sqrt();
         offsets.push_front(offset);
-        len += offset.unsigned_abs() as usize + 1;
+        len += offset.len() + 1;
         n = sqrt;
     }
-    if n != 0 {
-        offsets.push_front(n as i32);
-        len += n as usize;
-    }
+    offsets.push_front(Offset(n.value() as i64));
+    len += n.value() as usize;
     (offsets, len)
-}
-
-#[inline]
-fn nearest_sqrt(n: u32) -> (u32, i32) {
-    let sqrt = (n as f64).sqrt();
-    let floor = sqrt.floor() as u32;
-    let ceil = sqrt.ceil() as u32;
-    let floor_diff = n - floor * floor;
-    let ceil_diff = ceil * ceil - n;
-    // Choose the closer square root and avoid squaring to 256 or 1 << 32
-    if floor_diff < ceil_diff && floor != 16 || ceil == 16 || ceil == 65536 {
-        (floor, floor_diff as i32)
-    } else {
-        (ceil, -(ceil_diff as i32))
-    }
 }
 
 /// Finds the shortest path from `acc` to 0, preferring fewer squares as a tie
 /// breaker.
 #[inline]
-const fn encode_to_zero(acc: i32) -> (i32, u32) {
-    let (offset1, squares1) = encode_to_zero_no_overflow(acc);
-    let (offset2, squares2) = encode_to_zero_overflow(acc);
-    let len1 = offset1.unsigned_abs() + squares1;
-    let len2 = offset2.unsigned_abs() + squares2;
+const fn encode_to_0(n: Acc) -> (Offset, u32) {
+    let (offset1, squares1) = encode_to_zero_no_overflow(n);
+    let (offset2, squares2) = encode_to_zero_overflow(n);
+    let len1 = offset1.abs() + squares1;
+    let len2 = offset2.abs() + squares2;
     if len1 < len2 || len1 == len2 && squares1 <= squares2 {
         (offset1, squares1)
     } else {
@@ -94,11 +78,11 @@ const fn encode_to_zero(acc: i32) -> (i32, u32) {
 }
 
 #[inline]
-const fn encode_to_zero_no_overflow(acc: i32) -> (i32, u32) {
+const fn encode_to_zero_no_overflow(n: Acc) -> (Offset, u32) {
     const LOW_16: u32 = (4 + 16) / 2;
     const LOW_256: u32 = (16 + 256) / 2;
     const LOW_NEG: u32 = u32::MAX / 2 + 256 / 2;
-    let (target, squares): (i32, _) = match acc as u32 {
+    let (target, squares) = match n.value() {
         // Offset to 0
         0..4 => (0, 0),
         // Offset and square to 256
@@ -106,39 +90,37 @@ const fn encode_to_zero_no_overflow(acc: i32) -> (i32, u32) {
         LOW_16..LOW_256 => (16, 1),
         LOW_256..LOW_NEG => (256, 0),
         // Offset to -1
-        LOW_NEG.. => (-1, 0),
+        LOW_NEG.. => (u32::MAX, 0),
         // Cases for squaring to `x << 32` are not necessary here, because each
         // of those roots have at least 16 trailing zeros and are covered by
         // `encode_to_zero_overflow`.
     };
-    (target.wrapping_sub(acc), squares)
+    (Offset(target as i64 - n.value() as i64), squares)
 }
 
 #[inline]
-const fn encode_to_zero_overflow(acc: i32) -> (i32, u32) {
-    let mut acc = acc;
-    let mut tz = acc.trailing_zeros();
-    let mut offset = 0;
+const fn encode_to_zero_overflow(n: Acc) -> (Offset, u32) {
+    let mut tz = n.value().trailing_zeros();
+    let mut offset = Offset(0);
     if tz < 2 {
         offset = if tz == 1 {
-            match acc & 0b1111 {
+            match n.value() & 0b1111 {
                 // Offset to have 4+ trailing zeros
-                0b1110 => 2,
-                0b0010 => -2,
+                0b1110 => Offset(2),
+                0b0010 => Offset(-2),
                 // Use the 1 trailing zero
-                _ => 0,
+                _ => Offset(0),
             }
         } else {
-            match acc & 0b1111_1111 {
+            match n.value() & 0b1111_1111 {
                 // Offset to have 8+ trailing zeros
-                0b1111_1101 => 3,
-                0b0000_0011 => -3,
+                0b1111_1101 => Offset(3),
+                0b0000_0011 => Offset(-3),
                 // Offset to have 2+ trailing zeros (0b11 => 1, 0b01 => -1)
-                _ => (acc & 0b11) - 2,
+                _ => Offset((n.value() & 0b11) as i64 - 2),
             }
         };
-        acc = acc.wrapping_add(offset);
-        tz = acc.trailing_zeros();
+        tz = (n + offset).value().trailing_zeros();
     }
     // log2(32) - floor(log2(tz))
     let squares = tz.leading_zeros() - 32u32.leading_zeros();

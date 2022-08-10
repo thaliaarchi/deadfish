@@ -6,7 +6,7 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use crate::Builder;
+use crate::{Acc, Builder};
 
 /// Deadfish instructions.
 #[repr(u8)]
@@ -25,117 +25,15 @@ pub enum Inst {
 }
 
 impl Inst {
-    /// Compute the operation on the accumulator.
     #[must_use]
     #[inline]
-    pub const fn apply(&self, acc: i32) -> i32 {
-        let acc = normalize(acc);
-        normalize(match self {
-            Inst::I => acc.wrapping_add(1),
-            Inst::D => acc.wrapping_sub(1),
-            Inst::S => acc.wrapping_mul(acc),
-            _ => acc,
-        })
-    }
-
-    /// Compute the inverse operation on the accumulator, if possible.
-    #[must_use]
-    #[inline]
-    pub fn apply_inverse(&self, acc: i32) -> Option<i32> {
-        let acc = normalize(acc);
-        let acc = match self {
-            Inst::I => acc.wrapping_sub(1),
-            Inst::D => acc.wrapping_add(1),
-            Inst::S => {
-                let sqrt = (acc as u32 as f64).sqrt() as i32;
-                if sqrt.wrapping_mul(sqrt) != acc {
-                    return None;
-                }
-                sqrt
-            }
-            _ => acc,
-        };
-        if acc == normalize(acc) {
-            Some(acc)
-        } else {
-            None
-        }
+    pub fn eval(insts: &[Inst], acc: Acc) -> Acc {
+        insts.iter().fold(acc, |acc, &inst| acc.apply(inst))
     }
 
     #[must_use]
     #[inline]
-    pub const fn add(acc: i32, x: u32) -> i32 {
-        let acc = normalize(acc) as u32;
-        let add = acc.saturating_add(x);
-        if acc < 256 && add >= 256 || add == u32::MAX {
-            0
-        } else {
-            add as i32
-        }
-    }
-
-    #[must_use]
-    #[inline]
-    pub const fn sub(acc: i32, x: u32) -> i32 {
-        let acc = normalize(acc) as u32;
-        let sub = acc.saturating_sub(x);
-        if acc > 256 && sub <= 256 {
-            0
-        } else {
-            sub as i32
-        }
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn square(acc: i32, count: u32) -> i32 {
-        let mut acc = normalize(acc);
-        for _ in 0..count {
-            acc = normalize(acc.wrapping_mul(acc));
-            if acc == 0 {
-                break;
-            }
-        }
-        acc
-    }
-
-    #[must_use]
-    #[inline]
-    pub const fn saturating_add(acc: i32, x: u32) -> i32 {
-        let acc = normalize(acc) as u32;
-        let add = acc.saturating_add(x);
-        if acc < 256 && add >= 256 {
-            255
-        } else if add == u32::MAX {
-            -2
-        } else {
-            add as i32
-        }
-    }
-
-    #[must_use]
-    #[inline]
-    pub const fn saturating_sub(acc: i32, x: u32) -> i32 {
-        let acc = normalize(acc) as u32;
-        let sub = acc.saturating_sub(x);
-        if acc > 256 && sub <= 256 {
-            257
-        } else if sub == 0 && acc != 0 {
-            1
-        } else {
-            sub as i32
-        }
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn eval(insts: &[Inst], acc: i32) -> i32 {
-        insts.iter().fold(acc, |acc, inst| inst.apply(acc))
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn encode_number(acc: i32, n: i32) -> Vec<Inst> {
+    pub fn encode_number(acc: Acc, n: Acc) -> Vec<Inst> {
         let mut b = Builder::new(acc);
         b.push_number(n);
         b.into()
@@ -144,7 +42,7 @@ impl Inst {
     #[must_use]
     #[inline]
     pub fn encode(ir: &[Ir]) -> Vec<Inst> {
-        let mut b = Builder::new(0);
+        let mut b = Builder::new(Acc::new());
         b.push_ir(ir);
         b.into()
     }
@@ -175,24 +73,14 @@ impl Inst {
     #[must_use]
     pub fn eval_string(insts: &[Inst]) -> Option<String> {
         let mut s = String::new();
-        let mut acc = 0;
+        let mut acc = Acc::new();
         for &inst in insts {
             match inst {
-                Inst::O => s.push(char::from_u32(acc as u32)?),
-                _ => acc = inst.apply(acc),
+                Inst::O => s.push(char::from_u32(acc.value())?),
+                _ => acc = acc.apply(inst),
             }
         }
         Some(s)
-    }
-}
-
-#[must_use]
-#[inline]
-pub const fn normalize(n: i32) -> i32 {
-    if n == 256 || n == -1 {
-        0
-    } else {
-        n
     }
 }
 
@@ -200,7 +88,7 @@ pub const fn normalize(n: i32) -> i32 {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Ir {
     /// Output a number.
-    Number(i32),
+    Number(Acc),
     /// Print `">> "` shell prompts.
     Prompts(u32),
     /// Print line feeds.
@@ -209,9 +97,9 @@ pub enum Ir {
 
 impl Ir {
     #[must_use]
-    pub fn eval(insts: &[Inst]) -> (Vec<Self>, i32) {
+    pub fn eval(insts: &[Inst]) -> (Vec<Self>, Acc) {
         let mut ir = Vec::new();
-        let mut acc = 0;
+        let mut acc = Acc::new();
         // Counting prompts or blanks
         let mut counting_prompts = true;
         let mut count = 0;
@@ -228,7 +116,7 @@ impl Ir {
                     count += 1;
 
                     // Apply `i`, `d`, or `s` to the accumulator
-                    acc = inst.apply(acc);
+                    acc = acc.apply(inst);
                 }
                 Inst::O => {
                     // Flush any prompts and blanks (including a prompt for `o`)
@@ -272,7 +160,7 @@ impl Ir {
         let mut s = String::new();
         for &inst in ir {
             if let Ir::Number(n) = inst {
-                s.push(char::from_u32(n as u32)?);
+                s.push(char::from_u32(n.value())?);
             }
         }
         Some(s)

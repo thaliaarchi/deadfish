@@ -33,7 +33,15 @@
 //!     with [source archives](https://web.archive.org/web/20071019052558/http://www.jonathantoddskinner.com/projects/deadfish.tar.gz)
 //! - [Esolang wiki](https://esolangs.org/wiki/Deadfish)
 
-#![feature(box_syntax, exclusive_range_pattern)]
+#![feature(
+    box_syntax,
+    const_convert,
+    const_mut_refs,
+    const_result_drop,
+    const_trait_impl,
+    exclusive_range_pattern,
+    is_some_with
+)]
 #![warn(clippy::pedantic)]
 #![allow(
     clippy::cast_lossless,
@@ -43,11 +51,13 @@
     clippy::module_name_repetitions
 )]
 
+pub use acc::*;
 pub use bfs::*;
 pub use builder::*;
 pub(crate) use heuristic::*;
 pub use inst::*;
 
+mod acc;
 mod bfs;
 mod builder;
 mod heuristic;

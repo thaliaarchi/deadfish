@@ -10,13 +10,13 @@ use std::collections::{HashSet, VecDeque};
 
 use fxhash::FxBuildHasher;
 
-use crate::{heuristic_encode, Builder, Inst};
+use crate::{heuristic_encode, Acc, Builder, Inst};
 
 #[derive(Clone, Debug)]
 pub struct BfsEncoder {
     queue: Vec<Node>,
     index: usize,
-    visited: HashSet<i32, FxBuildHasher>,
+    visited: HashSet<Acc, FxBuildHasher>,
     max_len: u16,
 }
 
@@ -27,7 +27,7 @@ pub struct BfsEncoder {
 #[derive(Copy, Clone, Debug)]
 struct Node {
     /// Value of the node.
-    acc: i32,
+    acc: Acc,
     /// Instruction to produce `n` from the previous node or `None`, if the
     /// first node in the path.
     inst: Option<Inst>,
@@ -64,7 +64,7 @@ impl BfsEncoder {
     /// Performs a breadth-first search to encode `n` as Deadfish instructions.
     /// Returns a path, if one could be constructed, and whether it's optimal.
     #[must_use]
-    pub fn encode(&mut self, acc: i32, n: i32) -> (Option<Vec<Inst>>, bool) {
+    pub fn encode(&mut self, acc: Acc, n: Acc) -> (Option<Vec<Inst>>, bool) {
         let mut first_zero = None;
         self.queue.push(Node {
             acc,
@@ -84,7 +84,7 @@ impl BfsEncoder {
             }
             if node.len < self.max_len {
                 for inst in [Inst::I, Inst::D, Inst::S] {
-                    let acc = inst.apply(node.acc);
+                    let acc = node.acc.apply(inst);
                     if self.visited.insert(acc) {
                         self.queue.push(Node {
                             acc,
@@ -97,7 +97,7 @@ impl BfsEncoder {
             }
         }
         let path = first_zero.map(|i| {
-            let mut b = Builder::from_insts(self.path_from_queue(i), 0);
+            let mut b = Builder::from_insts(self.path_from_queue(i), Acc::new());
             heuristic_encode(&mut b, n);
             b.push(Inst::O);
             b.into()

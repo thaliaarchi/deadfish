@@ -18,15 +18,15 @@ macro_rules! insts[
 fn eval() {
     // Example programs from https://esolangs.org/wiki/Deadfish#Example_programs
     assert_eq!(
-        (vec![Ir::Prompts(6), Ir::Number(0)], 0),
+        (vec![Ir::Prompts(6), Ir::Number(0.into())], Acc::from(0)),
         Ir::eval(&insts![iissso])
     );
     assert_eq!(
-        (vec![Ir::Prompts(9), Ir::Number(288)], 288),
+        (vec![Ir::Prompts(9), Ir::Number(288.into())], Acc::from(288)),
         Ir::eval(&insts![diissisdo])
     );
     assert_eq!(
-        (vec![Ir::Prompts(40), Ir::Number(0)], 0),
+        (vec![Ir::Prompts(40), Ir::Number(0.into())], Acc::from(0)),
         Ir::eval(&insts![iissisdddddddddddddddddddddddddddddddddo])
     );
     // "Hello world"
@@ -34,32 +34,32 @@ fn eval() {
         (
             vec![
                 Ir::Prompts(17),
-                Ir::Number(72),
+                Ir::Number(72.into()),
                 Ir::Prompts(30),
-                Ir::Number(101),
+                Ir::Number(101.into()),
                 Ir::Prompts(8),
-                Ir::Number(108),
+                Ir::Number(108.into()),
                 Ir::Prompts(1),
-                Ir::Number(108),
+                Ir::Number(108.into()),
                 Ir::Prompts(4),
-                Ir::Number(111),
+                Ir::Number(111.into()),
                 Ir::Blanks(1),
                 Ir::Prompts(80),
-                Ir::Number(32),
+                Ir::Number(32.into()),
                 Ir::Blanks(1),
                 Ir::Prompts(25),
-                Ir::Number(119),
+                Ir::Number(119.into()),
                 Ir::Prompts(9),
-                Ir::Number(111),
+                Ir::Number(111.into()),
                 Ir::Prompts(4),
-                Ir::Number(114),
+                Ir::Number(114.into()),
                 Ir::Prompts(7),
-                Ir::Number(108),
+                Ir::Number(108.into()),
                 Ir::Prompts(9),
-                Ir::Number(100),
+                Ir::Number(100.into()),
                 Ir::Blanks(1),
             ],
-            100
+            Acc::from(100),
         ),
         Ir::eval(&insts![
             iisiiiisiiiiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiio_
@@ -86,8 +86,8 @@ fn compare_bfs() {
     });
 }
 
-fn compare_encode(mut f: Box<dyn FnMut(i32, i32) -> Option<Vec<Inst>>>) {
-    fn compare(acc: i32, n: i32, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]) {
+fn compare_encode(mut f: Box<dyn FnMut(Acc, Acc) -> Option<Vec<Inst>>>) {
+    fn compare(acc: Acc, n: Acc, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]) {
         if let Some(path) = path {
             for p in known_paths {
                 assert_eq!(n, Inst::eval(p, acc), "{:?}", p);
@@ -101,7 +101,9 @@ fn compare_encode(mut f: Box<dyn FnMut(i32, i32) -> Option<Vec<Inst>>>) {
         }
     }
     macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt),+]) => {
-        compare($acc, $n, f($acc, $n), &[$(insts![$insts]),+]);
+        let acc = Acc::from($acc);
+        let n = Acc::from($n);
+        compare(acc, n, f(acc, n), &[$(insts![$insts]),+]);
     });
 
     // The encodings for 0 -> 1..256 are the shortest solutions from Code Golf,
@@ -386,8 +388,8 @@ fn compare_encode(mut f: Box<dyn FnMut(i32, i32) -> Option<Vec<Inst>>>) {
 #[test]
 fn slow_bfs() {
     // "Wo" in, e.g., "Hello, World!"
-    let acc = 87;
-    let n = 111;
+    let acc = Acc::from(87);
+    let n = Acc::from(111);
     let path = insts![issssiiisiisddddddddddo];
 
     assert_eq!(path, Inst::encode_number(acc, n));

@@ -6,30 +6,30 @@
 // later version. You should have received a copy of the GNU Lesser General
 // Public License along with deadfish. If not, see http://www.gnu.org/licenses/.
 
-use crate::{heuristic_encode, normalize, Inst, Ir};
+use crate::{heuristic_encode, Acc, Inst, Ir, Offset};
 
 #[derive(Clone, Debug)]
 pub struct Builder {
     insts: Vec<Inst>,
-    acc: i32,
+    acc: Acc,
 }
 
 impl Builder {
     #[must_use]
     #[inline]
-    pub fn new(acc: i32) -> Self {
+    pub fn new(acc: Acc) -> Self {
         Self::from_insts(Vec::new(), acc)
     }
 
     #[must_use]
     #[inline]
-    pub fn from_insts(insts: Vec<Inst>, acc: i32) -> Self {
-        Builder { insts, acc: normalize(acc) }
+    pub fn from_insts(insts: Vec<Inst>, acc: Acc) -> Self {
+        Builder { insts, acc }
     }
 
     #[must_use]
     #[inline]
-    pub const fn acc(&self) -> i32 {
+    pub const fn acc(&self) -> Acc {
         self.acc
     }
 
@@ -40,17 +40,17 @@ impl Builder {
     }
 
     #[inline]
-    pub fn reset(&mut self, acc: i32) {
-        self.acc = normalize(acc);
+    pub fn reset(&mut self, acc: Acc) {
+        self.acc = acc;
         self.insts.clear();
     }
 
     /// Encodes `n` as Deadfish instructions.
     #[inline]
-    pub fn push_number(&mut self, n: i32) {
+    pub fn push_number(&mut self, n: Acc) {
         heuristic_encode(self, n);
         self.insts.push(Inst::O);
-        self.acc = normalize(n);
+        self.acc = n;
     }
 
     #[inline]
@@ -63,9 +63,9 @@ impl Builder {
     }
 
     #[inline]
-    pub fn push_numbers<T: Into<i32>, I: Iterator<Item = T>>(&mut self, numbers: I) {
+    pub fn push_numbers<I: Iterator<Item = Acc>>(&mut self, numbers: I) {
         for n in numbers {
-            self.push_number(n.into());
+            self.push_number(n);
         }
     }
 
@@ -75,55 +75,55 @@ impl Builder {
             // Encode Ā (256) as its decomposition, since it cannot be
             // represented in Deadfish as-is.
             if n == 'Ā' {
-                self.push_number('A' as i32);
-                self.push_number('\u{0304}' as i32);
+                self.push_number(Acc::from_raw('A' as u32));
+                self.push_number(Acc::from_raw('\u{0304}' as u32));
             } else {
-                self.push_number(n as i32);
+                self.push_number(Acc::from_raw(n as u32));
             }
         }
     }
 
     #[inline]
-    pub fn append(&mut self, insts: &[Inst]) -> i32 {
-        self.insts.extend_from_slice(insts);
-        self.acc = Inst::eval(insts, self.acc);
-        self.acc
-    }
-
-    #[inline]
-    pub fn push(&mut self, inst: Inst) -> i32 {
-        self.insts.push(inst);
-        self.acc = inst.apply(self.acc);
-        self.acc
-    }
-
-    #[inline]
-    pub fn offset(&mut self, offset: i32) -> i32 {
-        if offset > 0 {
-            self.add(offset as u32)
-        } else if offset < 0 {
-            self.sub(offset.unsigned_abs())
-        } else {
-            self.acc
+    pub fn push_bytes(&mut self, b: &[u8]) {
+        for &n in b {
+            self.push_number(Acc::from_raw(n as u32));
         }
     }
 
-    pub fn add(&mut self, x: u32) -> i32 {
+    #[inline]
+    pub fn append(&mut self, insts: &[Inst]) {
+        self.insts.extend_from_slice(insts);
+        self.acc = Inst::eval(insts, self.acc);
+    }
+
+    #[inline]
+    pub fn push(&mut self, inst: Inst) {
+        self.insts.push(inst);
+        self.acc = self.acc.apply(inst);
+    }
+
+    #[inline]
+    pub fn offset(&mut self, offset: Offset) {
+        if offset.is_negative() {
+            self.sub(offset.abs());
+        } else {
+            self.add(offset.abs());
+        }
+    }
+
+    pub fn add(&mut self, x: u32) {
         self.push_repeat(Inst::I, x);
-        self.acc = Inst::add(self.acc, x);
-        self.acc
+        self.acc += x;
     }
 
-    pub fn sub(&mut self, x: u32) -> i32 {
+    pub fn sub(&mut self, x: u32) {
         self.push_repeat(Inst::D, x);
-        self.acc = Inst::sub(self.acc, x);
-        self.acc
+        self.acc -= x;
     }
 
-    pub fn square(&mut self, count: u32) -> i32 {
+    pub fn square(&mut self, count: u32) {
         self.push_repeat(Inst::S, count);
-        self.acc = Inst::square(self.acc, count);
-        self.acc
+        self.acc = self.acc.square_repeat(count);
     }
 
     #[inline]
@@ -140,7 +140,7 @@ impl From<Builder> for Vec<Inst> {
 
 impl Default for Builder {
     fn default() -> Self {
-        Self::new(0)
+        Self::new(Acc::new())
     }
 }
 
@@ -148,7 +148,7 @@ impl Default for Builder {
 fn decompose_256() {
     let composed = "Ātra beigto zivju kodēšana";
     let decomposed = "A\u{0304}tra beigto zivju kodēšana";
-    let mut b = Builder::new(0);
+    let mut b = Builder::new(Acc::new());
     b.push_string(composed);
     assert_eq!(decomposed, Inst::eval_string(b.insts()).unwrap());
 }
