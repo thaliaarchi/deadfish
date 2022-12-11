@@ -40,7 +40,7 @@
     const_result_drop,
     const_trait_impl,
     exclusive_range_pattern,
-    is_some_with
+    is_some_and
 )]
 #![warn(clippy::pedantic)]
 #![allow(

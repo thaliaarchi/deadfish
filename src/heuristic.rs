@@ -30,7 +30,7 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
     let len_via_0 = offset_to_0.len() + squares_to_0 as usize + len_from_0;
 
     let start = b.insts().len();
-    if simple_offset.is_some_and(|&offset| offset.len() <= len_via_0) {
+    if simple_offset.is_some_and(|offset| offset.len() <= len_via_0) {
         b.offset(simple_offset.unwrap());
     } else {
         b.offset(offset_to_0);
