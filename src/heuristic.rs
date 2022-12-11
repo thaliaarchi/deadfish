@@ -40,8 +40,7 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
     debug_assert_eq!(n, b.acc(), "acc={acc} {:?}", &b.insts()[start..]);
 }
 
-#[must_use]
-pub(crate) fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
+fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
     let mut n = n;
     let mut offsets = VecDeque::new();
     let mut len = 0;
@@ -60,8 +59,8 @@ pub(crate) fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
 /// breaker.
 #[inline]
 const fn encode_to_0(n: Acc) -> (Offset, u32) {
-    let (offset1, squares1) = encode_to_zero_no_overflow(n);
-    let (offset2, squares2) = encode_to_zero_overflow(n);
+    let (offset1, squares1) = encode_to_0_no_overflow(n);
+    let (offset2, squares2) = encode_to_0_overflow(n);
     let len1 = offset1.abs() + squares1;
     let len2 = offset2.abs() + squares2;
     if len1 < len2 || len1 == len2 && squares1 <= squares2 {
@@ -72,7 +71,7 @@ const fn encode_to_0(n: Acc) -> (Offset, u32) {
 }
 
 #[inline]
-const fn encode_to_zero_no_overflow(n: Acc) -> (Offset, u32) {
+const fn encode_to_0_no_overflow(n: Acc) -> (Offset, u32) {
     const LOW_16: u32 = (4 + 16) / 2;
     const LOW_256: u32 = (16 + 256) / 2;
     const LOW_NEG: u32 = u32::MAX / 2 + 256 / 2;
@@ -87,13 +86,13 @@ const fn encode_to_zero_no_overflow(n: Acc) -> (Offset, u32) {
         LOW_NEG.. => (u32::MAX, 0),
         // Cases for squaring to `x << 32` are not necessary here, because each
         // of those roots have at least 16 trailing zeros and are covered by
-        // `encode_to_zero_overflow`.
+        // `encode_to_0_overflow`.
     };
     (Offset(target as i64 - n.value() as i64), squares)
 }
 
 #[inline]
-const fn encode_to_zero_overflow(n: Acc) -> (Offset, u32) {
+const fn encode_to_0_overflow(n: Acc) -> (Offset, u32) {
     let mut n = n.value();
     let mut tz = n.trailing_zeros();
     let mut offset = Offset(0);
@@ -127,4 +126,22 @@ const fn encode_to_zero_overflow(n: Acc) -> (Offset, u32) {
         tz.leading_zeros() - 32u32.leading_zeros()
     };
     (offset, squares)
+}
+
+#[test]
+fn sqrts_of_256() {
+    let sqrts_of_256 = [
+        16u32, 134217712, 134217744, 268435440, 268435472, 402653168, 402653200, 536870896,
+        536870928, 671088624, 671088656, 805306352, 805306384, 939524080, 939524112, 1073741808,
+        1073741840, 1207959536, 1207959568, 1342177264, 1342177296, 1476394992, 1476395024,
+        1610612720, 1610612752, 1744830448, 1744830480, 1879048176, 1879048208, 2013265904,
+        2013265936, 2147483632, 2147483664, 2281701360, 2281701392, 2415919088, 2415919120,
+        2550136816, 2550136848, 2684354544, 2684354576, 2818572272, 2818572304, 2952790000,
+        2952790032, 3087007728, 3087007760, 3221225456, 3221225488, 3355443184, 3355443216,
+        3489660912, 3489660944, 3623878640, 3623878672, 3758096368, 3758096400, 3892314096,
+        3892314128, 4026531824, 4026531856, 4160749552, 4160749584, 4294967280,
+    ];
+    for n in sqrts_of_256 {
+        assert_eq!((Offset(0), 1), encode_to_0(Acc::from(n)));
+    }
 }
