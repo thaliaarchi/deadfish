@@ -15,25 +15,25 @@ use crate::Inst;
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 
-pub struct Acc(u32);
+pub struct Value(u32);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Offset(pub i64);
 
-impl Acc {
-    /// Create a new accumulator at zero.
+impl Value {
+    /// Create a new Deadfish value of zero.
     #[must_use]
     #[inline]
     pub const fn new() -> Self {
-        Acc(0)
+        Value(0)
     }
 
     #[must_use]
     #[inline]
     pub const fn from_checked(n: u32) -> Option<Self> {
         if n == normalize(n) {
-            Some(Acc(n))
+            Some(Value(n))
         } else {
             None
         }
@@ -42,7 +42,7 @@ impl Acc {
     #[inline]
     pub(crate) const fn from_raw(n: u32) -> Self {
         debug_assert!(n == normalize(n));
-        Acc(n)
+        Value(n)
     }
 
     #[must_use]
@@ -51,7 +51,7 @@ impl Acc {
         self.0
     }
 
-    /// Compute the operation on the accumulator.
+    /// Compute the operation on the value.
     #[must_use]
     #[inline]
     pub const fn apply(self, inst: Inst) -> Self {
@@ -63,7 +63,7 @@ impl Acc {
         }
     }
 
-    /// Compute the inverse operation on the accumulator, if possible.
+    /// Compute the inverse operation on the value, if possible.
     #[must_use]
     #[inline]
     pub fn apply_inverse(self, inst: Inst) -> Option<Self> {
@@ -80,7 +80,7 @@ impl Acc {
             _ => return Some(self),
         };
         if n == normalize(n) {
-            Some(Acc(n))
+            Some(Value(n))
         } else {
             None
         }
@@ -88,17 +88,17 @@ impl Acc {
 
     #[must_use]
     pub const fn increment(self) -> Self {
-        Acc(normalize(self.0.wrapping_add(1)))
+        Value(normalize(self.0.wrapping_add(1)))
     }
 
     #[must_use]
     pub const fn decrement(self) -> Self {
-        Acc(normalize(self.0.wrapping_sub(1)))
+        Value(normalize(self.0.wrapping_sub(1)))
     }
 
     #[must_use]
     pub const fn square(self) -> Self {
-        Acc(normalize(self.0.wrapping_mul(self.0)))
+        Value(normalize(self.0.wrapping_mul(self.0)))
     }
 
     #[must_use]
@@ -106,11 +106,11 @@ impl Acc {
     pub const fn saturating_add(self, rhs: u32) -> Self {
         let add = self.0.saturating_add(rhs);
         if self.0 < 256 && add >= 256 {
-            Acc(255)
+            Value(255)
         } else if add == u32::MAX {
-            Acc(u32::MAX - 1)
+            Value(u32::MAX - 1)
         } else {
-            Acc(add)
+            Value(add)
         }
     }
 
@@ -119,11 +119,11 @@ impl Acc {
     pub const fn saturating_sub(self, rhs: u32) -> Self {
         let sub = self.0.saturating_sub(rhs);
         if self.0 > 256 && sub <= 256 {
-            Acc(257)
+            Value(257)
         } else if sub == 0 && self.0 != 0 {
-            Acc(1)
+            Value(1)
         } else {
-            Acc(sub)
+            Value(sub)
         }
     }
 
@@ -137,12 +137,12 @@ impl Acc {
                 break;
             }
         }
-        Acc(n)
+        Value(n)
     }
 
     #[must_use]
     #[inline]
-    pub fn nearest_sqrt(&self) -> (Acc, Offset) {
+    pub fn nearest_sqrt(&self) -> (Value, Offset) {
         let sqrt = (self.0 as f64).sqrt();
         let floor = sqrt.floor() as u32;
         let ceil = sqrt.ceil() as u32;
@@ -150,15 +150,15 @@ impl Acc {
         let ceil_diff = ceil * ceil - self.0;
         // Choose the closer square root and avoid squaring to 256 or 1 << 32
         if floor_diff < ceil_diff && floor != 16 || ceil == 16 || ceil == 65536 {
-            (Acc::from_raw(floor), Offset(floor_diff as i64))
+            (Value::from_raw(floor), Offset(floor_diff as i64))
         } else {
-            (Acc::from_raw(ceil), Offset(-(ceil_diff as i64)))
+            (Value::from_raw(ceil), Offset(-(ceil_diff as i64)))
         }
     }
 
     #[must_use]
     #[inline]
-    pub const fn offset_to(self, other: Acc) -> Option<Offset> {
+    pub const fn offset_to(self, other: Value) -> Option<Offset> {
         if (self.0 < 256) == (other.0 < 256) {
             Some(Offset(other.0 as i64 - self.0 as i64))
         } else {
@@ -197,48 +197,48 @@ impl Offset {
     }
 }
 
-impl const Add<u32> for Acc {
-    type Output = Acc;
+impl const Add<u32> for Value {
+    type Output = Value;
 
     #[inline]
     fn add(self, rhs: u32) -> Self::Output {
         let add = self.0.saturating_add(rhs);
         if self.0 < 256 && add >= 256 || add == u32::MAX {
-            Acc(0)
+            Value(0)
         } else {
-            Acc(add)
+            Value(add)
         }
     }
 }
 
-impl const AddAssign<u32> for Acc {
+impl const AddAssign<u32> for Value {
     fn add_assign(&mut self, rhs: u32) {
         *self = *self + rhs;
     }
 }
 
-impl const Sub<u32> for Acc {
-    type Output = Acc;
+impl const Sub<u32> for Value {
+    type Output = Value;
 
     #[inline]
     fn sub(self, rhs: u32) -> Self::Output {
         let sub = self.0.saturating_sub(rhs);
         if self.0 > 256 && sub <= 256 {
-            Acc(0)
+            Value(0)
         } else {
-            Acc(sub)
+            Value(sub)
         }
     }
 }
 
-impl const SubAssign<u32> for Acc {
+impl const SubAssign<u32> for Value {
     fn sub_assign(&mut self, rhs: u32) {
         *self = *self - rhs;
     }
 }
 
-impl const Add<Offset> for Acc {
-    type Output = Acc;
+impl const Add<Offset> for Value {
+    type Output = Value;
 
     #[inline]
     fn add(self, rhs: Offset) -> Self::Output {
@@ -250,8 +250,8 @@ impl const Add<Offset> for Acc {
     }
 }
 
-impl const Sub<Offset> for Acc {
-    type Output = Acc;
+impl const Sub<Offset> for Value {
+    type Output = Value;
 
     #[inline]
     fn sub(self, rhs: Offset) -> Self::Output {
@@ -268,14 +268,14 @@ impl const Neg for Offset {
     }
 }
 
-impl const PartialEq<u32> for Acc {
+impl const PartialEq<u32> for Value {
     #[inline]
     fn eq(&self, other: &u32) -> bool {
         self.0 == *other
     }
 }
 
-impl const PartialOrd<u32> for Acc {
+impl const PartialOrd<u32> for Value {
     #[inline]
     fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
         if self.0 == *other {
@@ -314,38 +314,38 @@ impl const Ord for Offset {
     }
 }
 
-impl const Default for Acc {
+impl const Default for Value {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl const From<u32> for Acc {
+impl const From<u32> for Value {
     #[inline]
     fn from(n: u32) -> Self {
-        Acc(normalize(n))
+        Value(normalize(n))
     }
 }
 
-impl const From<i32> for Acc {
+impl const From<i32> for Value {
     #[inline]
     fn from(n: i32) -> Self {
-        Acc(normalize(n as u32))
+        Value(normalize(n as u32))
     }
 }
 
-impl const From<Acc> for u32 {
+impl const From<Value> for u32 {
     #[inline]
-    fn from(acc: Acc) -> Self {
-        acc.0
+    fn from(v: Value) -> Self {
+        v.0
     }
 }
 
-impl const From<Acc> for i32 {
+impl const From<Value> for i32 {
     #[inline]
-    fn from(acc: Acc) -> Self {
-        acc.0 as i32
+    fn from(v: Value) -> Self {
+        v.0 as i32
     }
 }
 
@@ -356,7 +356,7 @@ impl const From<i64> for Offset {
     }
 }
 
-impl Display for Acc {
+impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0 as i32)
     }

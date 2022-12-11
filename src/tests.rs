@@ -18,15 +18,18 @@ macro_rules! insts[
 fn eval() {
     // Example programs from https://esolangs.org/wiki/Deadfish#Example_programs
     assert_eq!(
-        (vec![Ir::Prompts(6), Ir::Number(0.into())], Acc::from(0)),
+        (vec![Ir::Prompts(6), Ir::Number(0.into())], Value::from(0)),
         Ir::eval(&insts![iissso])
     );
     assert_eq!(
-        (vec![Ir::Prompts(9), Ir::Number(288.into())], Acc::from(288)),
+        (
+            vec![Ir::Prompts(9), Ir::Number(288.into())],
+            Value::from(288)
+        ),
         Ir::eval(&insts![diissisdo])
     );
     assert_eq!(
-        (vec![Ir::Prompts(40), Ir::Number(0.into())], Acc::from(0)),
+        (vec![Ir::Prompts(40), Ir::Number(0.into())], Value::from(0)),
         Ir::eval(&insts![iissisdddddddddddddddddddddddddddddddddo])
     );
 }
@@ -88,7 +91,7 @@ fn hello_world() {
 >> 
 ";
 
-    assert_eq!((ir, Acc::from(100)), Ir::eval(&program));
+    assert_eq!((ir, Value::from(100)), Ir::eval(&program));
 
     assert_eq!(minimized, Inst::minimize(&program));
 
@@ -99,42 +102,42 @@ fn hello_world() {
 
 #[test]
 fn compare_heuristic() {
-    compare_encode(box |acc, n| Some(Inst::encode_number(acc, n)))
+    compare_encode(box |from, to| Some(Inst::encode_number(from, to)))
 }
 
 #[test]
 fn compare_bfs() {
     let mut enc = BfsEncoder::with_bound(16);
-    compare_encode(box move |acc, n| {
-        let (mut path, optimal) = enc.encode(acc, n);
+    compare_encode(box move |from, to| {
+        let (mut path, optimal) = enc.encode(from, to);
         if let Some(path) = &mut path {
             path.push(Inst::O);
         }
         if !optimal {
-            println!("{acc} -> {n} may not be optimal with {path:?}");
+            println!("{from} -> {to} may not be optimal with {path:?}");
         }
         path
     });
 }
 
-fn compare_encode(mut f: Box<dyn FnMut(Acc, Acc) -> Option<Vec<Inst>>>) {
-    fn compare(acc: Acc, n: Acc, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]) {
+fn compare_encode(mut f: Box<dyn FnMut(Value, Value) -> Option<Vec<Inst>>>) {
+    fn compare(from: Value, to: Value, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]) {
         if let Some(path) = path {
             for p in known_paths {
-                assert_eq!(n, Inst::eval(p, acc), "{:?}", p);
+                assert_eq!(to, Inst::eval(p, from), "{:?}", p);
             }
             assert!(
                 known_paths.iter().find(|&p| &path == p).is_some(),
-                "{acc} -> {n} path {path:?} not in {known_paths:?}",
+                "{from} -> {to} path {path:?} not in {known_paths:?}",
             );
         } else {
-            println!("Unable to encode {acc} -> {n}");
+            println!("Unable to encode {from} -> {to}");
         }
     }
-    macro_rules! encode(($acc:literal -> $n:literal [$($insts:tt),+]) => {
-        let acc = Acc::from($acc);
-        let n = Acc::from($n);
-        compare(acc, n, f(acc, n), &[$(insts![$insts]),+]);
+    macro_rules! encode(($from:literal -> $to:literal [$($insts:tt),+]) => {
+        let from = Value::from($from);
+        let to = Value::from($to);
+        compare(from, to, f(from, to), &[$(insts![$insts]),+]);
     });
 
     // The encodings for 0 -> 1..=255 are consistent with the shortest solutions
@@ -424,15 +427,15 @@ fn compare_encode(mut f: Box<dyn FnMut(Acc, Acc) -> Option<Vec<Inst>>>) {
 #[test]
 fn slow_bfs() {
     // "Wo" in, e.g., "Hello, World!"
-    let acc = Acc::from(87);
-    let n = Acc::from(111);
+    let from = Value::from(87);
+    let to = Value::from(111);
     let path = insts![issssiiisiisddddddddddo];
 
-    assert_eq!(path, Inst::encode_number(acc, n));
+    assert_eq!(path, Inst::encode_number(from, to));
 
     let mut enc = BfsEncoder::new();
-    assert_eq!((Some(path.clone()), true), enc.encode(acc, n));
+    assert_eq!((Some(path.clone()), true), enc.encode(from, to));
 
     enc.set_bound(8);
-    assert_eq!((Some(path), false), enc.encode(acc, n));
+    assert_eq!((Some(path), false), enc.encode(from, to));
 }

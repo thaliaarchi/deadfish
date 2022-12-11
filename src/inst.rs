@@ -8,7 +8,7 @@
 
 use std::io::{self, Write};
 
-use crate::{Acc, Builder};
+use crate::{Builder, Value};
 
 /// Deadfish instructions.
 #[repr(u8)]
@@ -29,22 +29,22 @@ pub enum Inst {
 impl Inst {
     #[must_use]
     #[inline]
-    pub fn eval(insts: &[Inst], acc: Acc) -> Acc {
+    pub fn eval(insts: &[Inst], acc: Value) -> Value {
         insts.iter().fold(acc, |acc, &inst| acc.apply(inst))
     }
 
     #[must_use]
     #[inline]
-    pub fn encode_number(acc: Acc, n: Acc) -> Vec<Inst> {
-        let mut b = Builder::new(acc);
-        b.push_number(n);
+    pub fn encode_number(from: Value, to: Value) -> Vec<Inst> {
+        let mut b = Builder::new(from);
+        b.push_number(to);
         b.into()
     }
 
     #[must_use]
     #[inline]
-    pub fn encode_numbers(ir: &Vec<Acc>) -> Vec<Inst> {
-        let mut b = Builder::new(Acc::new());
+    pub fn encode_numbers(ir: &Vec<Value>) -> Vec<Inst> {
+        let mut b = Builder::new(Value::new());
         b.push_numbers(ir.iter().copied());
         b.into()
     }
@@ -73,9 +73,9 @@ impl Inst {
     }
 
     #[must_use]
-    pub fn eval_numbers(insts: &[Inst]) -> (Vec<Acc>, Acc) {
+    pub fn eval_numbers(insts: &[Inst]) -> (Vec<Value>, Value) {
         let mut numbers = Vec::new();
-        let mut acc = Acc::new();
+        let mut acc = Value::new();
         for &inst in insts {
             match inst {
                 Inst::O => numbers.push(acc),
@@ -88,7 +88,7 @@ impl Inst {
     #[must_use]
     pub fn eval_string(insts: &[Inst]) -> Option<String> {
         let mut s = String::new();
-        let mut acc = Acc::new();
+        let mut acc = Value::new();
         for &inst in insts {
             match inst {
                 Inst::O => s.push(char::from_u32(acc.value())?),
@@ -99,7 +99,7 @@ impl Inst {
     }
 
     pub fn interpret<W: Write>(insts: &[Inst], stdout: &mut W) -> io::Result<()> {
-        let mut acc = Acc::new();
+        let mut acc = Value::new();
         for &inst in insts {
             write!(stdout, ">> ")?;
             match inst {
@@ -116,7 +116,7 @@ impl Inst {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Ir {
     /// Output a number.
-    Number(Acc),
+    Number(Value),
     /// Print `">> "` shell prompts.
     Prompts(u32),
     /// Print line feeds.
@@ -125,9 +125,9 @@ pub enum Ir {
 
 impl Ir {
     #[must_use]
-    pub fn eval(insts: &[Inst]) -> (Vec<Self>, Acc) {
+    pub fn eval(insts: &[Inst]) -> (Vec<Self>, Value) {
         let mut ir = Vec::new();
-        let mut acc = Acc::new();
+        let mut acc = Value::new();
         // Counting prompts or blanks
         let mut counting_prompts = true;
         let mut count = 0;

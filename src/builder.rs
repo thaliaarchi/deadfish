@@ -8,30 +8,30 @@
 
 use std::collections::VecDeque;
 
-use crate::{heuristic_encode, Acc, Inst, Offset};
+use crate::{heuristic_encode, Inst, Offset, Value};
 
 #[derive(Clone, Debug)]
 pub struct Builder {
     insts: Vec<Inst>,
-    acc: Acc,
+    acc: Value,
 }
 
 impl Builder {
     #[must_use]
     #[inline]
-    pub fn new(acc: Acc) -> Self {
+    pub fn new(acc: Value) -> Self {
         Self::from_insts(Vec::new(), acc)
     }
 
     #[must_use]
     #[inline]
-    pub fn from_insts(insts: Vec<Inst>, acc: Acc) -> Self {
+    pub fn from_insts(insts: Vec<Inst>, acc: Value) -> Self {
         Builder { insts, acc }
     }
 
     #[must_use]
     #[inline]
-    pub const fn acc(&self) -> Acc {
+    pub const fn acc(&self) -> Value {
         self.acc
     }
 
@@ -48,21 +48,21 @@ impl Builder {
     }
 
     #[inline]
-    pub fn reset(&mut self, acc: Acc) {
+    pub fn reset(&mut self, acc: Value) {
         self.acc = acc;
         self.insts.clear();
     }
 
     /// Encodes `n` as Deadfish instructions.
     #[inline]
-    pub fn push_number(&mut self, n: Acc) {
+    pub fn push_number(&mut self, n: Value) {
         heuristic_encode(self, n);
         self.insts.push(Inst::O);
         self.acc = n;
     }
 
     #[inline]
-    pub fn push_numbers<I: Iterator<Item = Acc>>(&mut self, numbers: I) {
+    pub fn push_numbers<I: Iterator<Item = Value>>(&mut self, numbers: I) {
         for n in numbers {
             self.push_number(n);
         }
@@ -74,10 +74,10 @@ impl Builder {
             // Encode Ā (256) as its decomposition, since it cannot be
             // represented in Deadfish as-is.
             if n == 'Ā' {
-                self.push_number(Acc::from_raw('A' as u32));
-                self.push_number(Acc::from_raw('\u{0304}' as u32));
+                self.push_number(Value::from_raw('A' as u32));
+                self.push_number(Value::from_raw('\u{0304}' as u32));
             } else {
-                self.push_number(Acc::from_raw(n as u32));
+                self.push_number(Value::from_raw(n as u32));
             }
         }
     }
@@ -85,7 +85,7 @@ impl Builder {
     #[inline]
     pub fn push_bytes(&mut self, b: &[u8]) {
         for &n in b {
-            self.push_number(Acc::from_raw(n as u32));
+            self.push_number(Value::from_raw(n as u32));
         }
     }
 
@@ -149,7 +149,7 @@ impl From<Builder> for Vec<Inst> {
 
 impl Default for Builder {
     fn default() -> Self {
-        Self::new(Acc::new())
+        Self::new(Value::new())
     }
 }
 
@@ -157,7 +157,7 @@ impl Default for Builder {
 fn decompose_256() {
     let composed = "Ātra beigto zivju kodēšana";
     let decomposed = "A\u{0304}tra beigto zivju kodēšana";
-    let mut b = Builder::new(Acc::new());
+    let mut b = Builder::new(Value::new());
     b.push_string(composed);
     assert_eq!(decomposed, Inst::eval_string(b.insts()).unwrap());
 }

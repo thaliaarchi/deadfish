@@ -18,15 +18,15 @@
 
 use std::collections::VecDeque;
 
-use crate::{Acc, Builder, Offset};
+use crate::{Builder, Offset, Value};
 
-pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
+pub(crate) fn heuristic_encode(b: &mut Builder, v: Value) {
     let acc = b.acc();
 
-    let simple_offset = acc.offset_to(n);
+    let simple_offset = acc.offset_to(v);
 
     let (offset_to_0, squares_to_0) = encode_to_0(acc);
-    let (offsets_from_0, len_from_0) = encode_from_0(n);
+    let (offsets_from_0, len_from_0) = encode_from_0(v);
     let len_via_0 = offset_to_0.len() + squares_to_0 as usize + len_from_0;
 
     let start = b.insts().len();
@@ -37,30 +37,30 @@ pub(crate) fn heuristic_encode(b: &mut Builder, n: Acc) {
         b.square(squares_to_0);
         b.offset_squares(&offsets_from_0);
     }
-    debug_assert_eq!(n, b.acc(), "acc={acc} {:?}", &b.insts()[start..]);
+    debug_assert_eq!(v, b.acc(), "acc={acc} {:?}", &b.insts()[start..]);
 }
 
-fn encode_from_0(n: Acc) -> (VecDeque<Offset>, usize) {
-    let mut n = n;
+fn encode_from_0(v: Value) -> (VecDeque<Offset>, usize) {
+    let mut v = v;
     let mut offsets = VecDeque::new();
     let mut len = 0;
-    while n >= 4 {
-        let (sqrt, offset) = n.nearest_sqrt();
+    while v >= 4 {
+        let (sqrt, offset) = v.nearest_sqrt();
         offsets.push_front(offset);
         len += offset.len() + 1;
-        n = sqrt;
+        v = sqrt;
     }
-    offsets.push_front(Offset(n.value() as i64));
-    len += n.value() as usize;
+    offsets.push_front(Offset(v.value() as i64));
+    len += v.value() as usize;
     (offsets, len)
 }
 
-/// Finds the shortest path from `acc` to 0, preferring fewer squares as a tie
-/// breaker.
+/// Finds the shortest path from `v` to 0, preferring fewer squares as a
+/// tiebreaker.
 #[inline]
-const fn encode_to_0(n: Acc) -> (Offset, u32) {
-    let (offset1, squares1) = encode_to_0_no_overflow(n);
-    let (offset2, squares2) = encode_to_0_overflow(n);
+const fn encode_to_0(v: Value) -> (Offset, u32) {
+    let (offset1, squares1) = encode_to_0_no_overflow(v);
+    let (offset2, squares2) = encode_to_0_overflow(v);
     let len1 = offset1.abs() + squares1;
     let len2 = offset2.abs() + squares2;
     if len1 < len2 || len1 == len2 && squares1 <= squares2 {
@@ -71,11 +71,11 @@ const fn encode_to_0(n: Acc) -> (Offset, u32) {
 }
 
 #[inline]
-const fn encode_to_0_no_overflow(n: Acc) -> (Offset, u32) {
+const fn encode_to_0_no_overflow(v: Value) -> (Offset, u32) {
     const LOW_16: u32 = (4 + 16) / 2;
     const LOW_256: u32 = (16 + 256) / 2;
     const LOW_NEG: u32 = u32::MAX / 2 + 256 / 2;
-    let (target, squares) = match n.value() {
+    let (target, squares) = match v.value() {
         // Offset to 0
         0..4 => (0, 0),
         // Offset and square to 256
@@ -88,17 +88,17 @@ const fn encode_to_0_no_overflow(n: Acc) -> (Offset, u32) {
         // of those roots have at least 16 trailing zeros and are covered by
         // `encode_to_0_overflow`.
     };
-    (Offset(target as i64 - n.value() as i64), squares)
+    (Offset(target as i64 - v.value() as i64), squares)
 }
 
 #[inline]
-const fn encode_to_0_overflow(n: Acc) -> (Offset, u32) {
-    let mut n = n.value();
-    let mut tz = n.trailing_zeros();
+const fn encode_to_0_overflow(v: Value) -> (Offset, u32) {
+    let mut v = v.value();
+    let mut tz = v.trailing_zeros();
     let mut offset = Offset(0);
     if tz < 2 {
         offset = if tz == 1 {
-            match n & 0b1111 {
+            match v & 0b1111 {
                 // Offset to have 4+ trailing zeros
                 0b1110 => Offset(2),
                 0b0010 => Offset(-2),
@@ -106,19 +106,19 @@ const fn encode_to_0_overflow(n: Acc) -> (Offset, u32) {
                 _ => Offset(0),
             }
         } else {
-            match n & 0b1111_1111 {
+            match v & 0b1111_1111 {
                 // Offset to have 8+ trailing zeros
                 0b1111_1101 => Offset(3),
                 0b0000_0011 => Offset(-3),
                 // Offset to have 2+ trailing zeros (0b11 => 1, 0b01 => -1)
-                _ => Offset((n & 0b11) as i64 - 2),
+                _ => Offset((v & 0b11) as i64 - 2),
             }
         };
-        n = (Acc::from_raw(n) + offset).value();
-        tz = n.trailing_zeros();
+        v = (Value::from_raw(v) + offset).value();
+        tz = v.trailing_zeros();
     }
-    let squares = if n.wrapping_mul(n) == 256 {
-        // Square once, if n is a modular square root of 256
+    let squares = if v.wrapping_mul(v) == 256 {
+        // Square once, if `v` is a modular square root of 256
         1
     } else {
         // Square until there are 32 trailing zeros; equivalent to
@@ -142,6 +142,6 @@ fn sqrts_of_256() {
         3892314128, 4026531824, 4026531856, 4160749552, 4160749584, 4294967280,
     ];
     for n in sqrts_of_256 {
-        assert_eq!((Offset(0), 1), encode_to_0(Acc::from(n)));
+        assert_eq!((Offset(0), 1), encode_to_0(Value::from(n)));
     }
 }

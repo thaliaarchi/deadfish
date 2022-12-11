@@ -51,17 +51,17 @@
     clippy::module_name_repetitions
 )]
 
-pub use acc::*;
 pub use bfs::*;
 pub use builder::*;
 pub(crate) use heuristic::*;
 pub use inst::*;
+pub use value::*;
 
-mod acc;
 mod bfs;
 mod builder;
 mod heuristic;
 mod inst;
+mod value;
 
 #[cfg(test)]
 mod tests;

@@ -10,13 +10,13 @@ use std::collections::{HashSet, VecDeque};
 
 use fxhash::FxBuildHasher;
 
-use crate::{heuristic_encode, Acc, Builder, Inst};
+use crate::{heuristic_encode, Builder, Inst, Value};
 
 #[derive(Clone, Debug)]
 pub struct BfsEncoder {
     queue: Vec<Node>,
     index: usize,
-    visited: HashSet<Acc, FxBuildHasher>,
+    visited: HashSet<Value, FxBuildHasher>,
     max_len: u16,
 }
 
@@ -27,8 +27,8 @@ pub struct BfsEncoder {
 #[derive(Copy, Clone, Debug)]
 struct Node {
     /// Value of the node.
-    acc: Acc,
-    /// Instruction to produce `n` from the previous node or `None`, if the
+    v: Value,
+    /// Instruction to produce `v` from the previous node or `None`, if the
     /// first node in the path.
     inst: Option<Inst>,
     /// Index in `queue` of the previous node. To avoid extra space for
@@ -61,10 +61,11 @@ impl BfsEncoder {
         self.max_len = max_len.try_into().unwrap_or(u16::MAX);
     }
 
-    /// Performs a breadth-first search to encode `n` as Deadfish instructions.
-    /// Returns a path, if one could be constructed, and whether it's optimal.
+    /// Performs a breadth-first search to encode `to` as Deadfish instructions,
+    /// starting at `from`. Returns a path, if one could be constructed, and
+    /// whether it's optimal.
     #[must_use]
-    pub fn encode(&mut self, acc: Acc, n: Acc) -> (Option<Vec<Inst>>, bool) {
+    pub fn encode(&mut self, from: Value, to: Value) -> (Option<Vec<Inst>>, bool) {
         self.queue.clear();
         self.index = 0;
         self.visited.clear();
@@ -73,38 +74,38 @@ impl BfsEncoder {
         let mut closest_square = None;
 
         self.queue.push(Node {
-            acc,
+            v: from,
             inst: None,
             prev: usize::MAX,
             len: 0,
         });
         while let Some((i, node)) = self.queue_next() {
-            if node.acc == n {
+            if node.v == to {
                 return (Some(self.path_from_queue(i)), true);
             }
 
-            // Track the shortest path to 0, because a path from 0 to `n` is
+            // Track the shortest path to 0, because a path from 0 to `to` is
             // usually short
-            if node.acc == 0 && zero_index == None {
+            if node.v == 0 && zero_index == None {
                 zero_index = Some(i);
             }
 
             if node.len < self.max_len {
                 for inst in [Inst::I, Inst::D, Inst::S] {
-                    let acc = node.acc.apply(inst);
-                    if self.visited.insert(acc) {
+                    let v = node.v.apply(inst);
+                    if self.visited.insert(v) {
                         let path_len = node.len + 1;
                         self.queue.push(Node {
-                            acc,
+                            v,
                             inst: Some(inst),
                             prev: i,
                             len: path_len,
                         });
                         let i = self.queue.len();
 
-                        // Track the square that is closest to `n` by an offset
+                        // Track the square that is closest to `to` by an offset
                         if inst == Inst::S {
-                            if let Some(offset) = acc.offset_to(n) {
+                            if let Some(offset) = v.offset_to(to) {
                                 let path_len = path_len as usize + offset.len();
                                 if !matches!(closest_square, Some((_, _, len)) if len <= path_len) {
                                     closest_square = Some((i, offset, path_len));
@@ -118,12 +119,12 @@ impl BfsEncoder {
 
         let mut path = None;
         if let Some(i) = zero_index {
-            let mut b = Builder::from_insts(self.path_from_queue(i), Acc::new());
-            heuristic_encode(&mut b, n);
+            let mut b = Builder::from_insts(self.path_from_queue(i), Value::new());
+            heuristic_encode(&mut b, to);
             path = Some(b.into_insts());
         }
         if let Some((i, offset, _)) = closest_square {
-            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].acc);
+            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].v);
             b.offset(offset);
             let square_path = b.into_insts();
             if !matches!(&path, Some(path) if path.len() <= square_path.len()) {
