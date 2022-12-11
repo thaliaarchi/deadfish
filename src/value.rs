@@ -15,11 +15,11 @@ use crate::Inst;
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 
-pub struct Value(u32);
+pub struct Value(pub(crate) u32);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Offset(pub i64);
+pub struct Offset(pub(crate) i64);
 
 impl Value {
     /// Create a new Deadfish value of zero.
@@ -67,7 +67,7 @@ impl Value {
     #[must_use]
     #[inline]
     pub fn apply_inverse(self, inst: Inst) -> Option<Self> {
-        let n = match inst {
+        Self::from_checked(match inst {
             Inst::I => self.0.wrapping_sub(1),
             Inst::D => self.0.wrapping_add(1),
             Inst::S => {
@@ -78,27 +78,22 @@ impl Value {
                 sqrt as u32
             }
             _ => return Some(self),
-        };
-        if n == normalize(n) {
-            Some(Value(n))
-        } else {
-            None
-        }
+        })
     }
 
     #[must_use]
     pub const fn increment(self) -> Self {
-        Value(normalize(self.0.wrapping_add(1)))
+        Value::from(self.0.wrapping_add(1))
     }
 
     #[must_use]
     pub const fn decrement(self) -> Self {
-        Value(normalize(self.0.wrapping_sub(1)))
+        Value::from(self.0.wrapping_sub(1))
     }
 
     #[must_use]
     pub const fn square(self) -> Self {
-        Value(normalize(self.0.wrapping_mul(self.0)))
+        Value::from(self.0.wrapping_mul(self.0))
     }
 
     #[must_use]
@@ -150,9 +145,9 @@ impl Value {
         let ceil_diff = ceil * ceil - self.0;
         // Choose the closer square root and avoid squaring to 256 or 1 << 32
         if floor_diff < ceil_diff && floor != 16 || ceil == 16 || ceil == 65536 {
-            (Value::from_raw(floor), Offset(floor_diff as i64))
+            (Value(floor), Offset(floor_diff as i64))
         } else {
-            (Value::from_raw(ceil), Offset(-(ceil_diff as i64)))
+            (Value(ceil), Offset(-(ceil_diff as i64)))
         }
     }
 
@@ -250,12 +245,24 @@ impl const Add<Offset> for Value {
     }
 }
 
+impl const AddAssign<Offset> for Value {
+    fn add_assign(&mut self, rhs: Offset) {
+        *self = *self + rhs;
+    }
+}
+
 impl const Sub<Offset> for Value {
     type Output = Value;
 
     #[inline]
     fn sub(self, rhs: Offset) -> Self::Output {
         self + -rhs
+    }
+}
+
+impl const SubAssign<Offset> for Value {
+    fn sub_assign(&mut self, rhs: Offset) {
+        *self = *self - rhs;
     }
 }
 
@@ -318,6 +325,13 @@ impl const Default for Value {
     #[inline]
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl const Default for Offset {
+    #[inline]
+    fn default() -> Self {
+        Offset(0)
     }
 }
 

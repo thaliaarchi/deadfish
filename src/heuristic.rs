@@ -93,12 +93,12 @@ const fn encode_to_0_no_overflow(v: Value) -> (Offset, u32) {
 
 #[inline]
 const fn encode_to_0_overflow(v: Value) -> (Offset, u32) {
-    let mut v = v.value();
-    let mut tz = v.trailing_zeros();
+    let mut n = v.value();
+    let mut tz = n.trailing_zeros();
     let mut offset = Offset(0);
     if tz < 2 {
         offset = if tz == 1 {
-            match v & 0b1111 {
+            match n & 0b1111 {
                 // Offset to have 4+ trailing zeros
                 0b1110 => Offset(2),
                 0b0010 => Offset(-2),
@@ -106,18 +106,18 @@ const fn encode_to_0_overflow(v: Value) -> (Offset, u32) {
                 _ => Offset(0),
             }
         } else {
-            match v & 0b1111_1111 {
+            match n & 0b1111_1111 {
                 // Offset to have 8+ trailing zeros
                 0b1111_1101 => Offset(3),
                 0b0000_0011 => Offset(-3),
                 // Offset to have 2+ trailing zeros (0b11 => 1, 0b01 => -1)
-                _ => Offset((v & 0b11) as i64 - 2),
+                _ => Offset((n & 0b11) as i64 - 2),
             }
         };
-        v = (Value::from_raw(v) + offset).value();
-        tz = v.trailing_zeros();
+        n = (v + offset).value();
+        tz = n.trailing_zeros();
     }
-    let squares = if v.wrapping_mul(v) == 256 {
+    let squares = if n.wrapping_mul(n) == 256 {
         // Square once, if `v` is a modular square root of 256
         1
     } else {
