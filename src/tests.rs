@@ -121,19 +121,22 @@ fn compare_bfs() {
 }
 
 fn compare_encode(mut f: Box<dyn FnMut(Value, Value) -> Option<Vec<Inst>>>) {
-    fn compare(from: Value, to: Value, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]) {
-        if let Some(path) = path {
-            for p in known_paths {
-                assert_eq!(to, Inst::eval(p, from), "{:?}", p);
+    let mut pass = true;
+
+    let mut compare =
+        |from: Value, to: Value, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]| {
+            if let Some(path) = path {
+                for p in known_paths {
+                    assert_eq!(to, Inst::eval(p, from), "Inst::eval({p:?}, {from})");
+                }
+                if known_paths.iter().find(|&p| &path == p).is_none() {
+                    println!("{from} -> {to} path {path:?} not in {known_paths:?}");
+                    pass = false;
+                }
+            } else {
+                println!("Unable to encode {from} -> {to}");
             }
-            assert!(
-                known_paths.iter().find(|&p| &path == p).is_some(),
-                "{from} -> {to} path {path:?} not in {known_paths:?}",
-            );
-        } else {
-            println!("Unable to encode {from} -> {to}");
-        }
-    }
+        };
     macro_rules! encode(($from:literal -> $to:literal [$($insts:tt),+]) => {
         let from = Value::from($from);
         let to = Value::from($to);
@@ -404,8 +407,111 @@ fn compare_encode(mut f: Box<dyn FnMut(Value, Value) -> Option<Vec<Inst>>>) {
     encode!(0 -> 253 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
     encode!(0 -> 254 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
     encode!(0 -> 255 [iissdsiiiiiiiiiiiiiiiiiiiiiiiiiiiiiio]);
-
+    encode!(0 -> 256 [o]);
     encode!(0 -> 257 [iissisddddddddddddddddddddddddddddddddo]);
+    encode!(0 -> -1 [o]);
+
+    // Encode to 0
+    encode!(-1 -> 0 [o]);
+    encode!(-2 -> 0 [io]);
+    encode!(-3 -> 0 [iio]);
+    encode!(-4 -> 0 [sso]);
+    encode!(-5 -> 0 [isso]);
+    encode!(-6 -> 0 [iisso]);
+    encode!(-7 -> 0 [iiisso]);
+    encode!(-8 -> 0 [sssso]);
+    encode!(-9 -> 0 [isssso]);
+    encode!(-10 -> 0 [ssssso]);
+    encode!(-11 -> 0 [dsssso]);
+    encode!(-12 -> 0 [sssso]);
+    encode!(-13 -> 0 [dddso]);
+    encode!(-14 -> 0 [ddso]);
+    encode!(-15 -> 0 [dso]);
+    encode!(-16 -> 0 [so]);
+    encode!(-17 -> 0 [iso]);
+    encode!(-18 -> 0 [iiso]);
+    encode!(-19 -> 0 [iiiso]);
+    encode!(-20 -> 0 [sssso]);
+    encode!(-21 -> 0 [isssso]);
+    encode!(-22 -> 0 [ssssso]);
+    encode!(-23 -> 0 [dsssso]);
+    encode!(-24 -> 0 [sssso]);
+    encode!(-25 -> 0 [isssso]);
+    encode!(-26 -> 0 [ssssso]);
+    encode!(-27 -> 0 [dsssso]);
+    encode!(-28 -> 0 [sssso]);
+    encode!(-29 -> 0 [isssso]);
+    encode!(-30 -> 0 [ddssso]);
+    encode!(-31 -> 0 [dssso]);
+    encode!(-32 -> 0 [ssso]);
+    encode!(-33 -> 0 [issso]);
+    encode!(-34 -> 0 [iissso]);
+    encode!(-35 -> 0 [dsssso]);
+    encode!(-36 -> 0 [sssso]);
+    encode!(-37 -> 0 [isssso]);
+    encode!(-38 -> 0 [ssssso]);
+    encode!(-39 -> 0 [dsssso]);
+    encode!(-40 -> 0 [sssso]);
+    encode!(-41 -> 0 [isssso]);
+    encode!(-42 -> 0 [ssssso]);
+    encode!(-43 -> 0 [dsssso]);
+    encode!(-44 -> 0 [sssso]);
+    encode!(-45 -> 0 [isssso]);
+    encode!(-46 -> 0 [ddssso]);
+    encode!(-47 -> 0 [dssso]);
+    encode!(-48 -> 0 [ssso]);
+    encode!(-49 -> 0 [issso]);
+    encode!(-50 -> 0 [iissso]);
+    encode!(-51 -> 0 [dsssso]);
+    encode!(-52 -> 0 [sssso]);
+    encode!(-53 -> 0 [isssso]);
+    encode!(-54 -> 0 [ssssso]);
+    encode!(-55 -> 0 [dsssso]);
+    encode!(-56 -> 0 [sssso]);
+    encode!(-57 -> 0 [isssso]);
+    encode!(-58 -> 0 [ssssso]);
+    encode!(-59 -> 0 [dsssso]);
+    encode!(-60 -> 0 [sssso]);
+    encode!(-61 -> 0 [isssso]);
+    encode!(-62 -> 0 [ddssso]);
+    encode!(-63 -> 0 [dssso]);
+    encode!(-64 -> 0 [ssso]);
+    encode!(-65 -> 0 [issso]);
+    encode!(-66 -> 0 [iissso]);
+    encode!(-67 -> 0 [dsssso]);
+    encode!(-68 -> 0 [sssso]);
+    encode!(-69 -> 0 [isssso]);
+    encode!(-70 -> 0 [ssssso]);
+    encode!(-71 -> 0 [dsssso]);
+    encode!(-72 -> 0 [sssso]);
+    encode!(-73 -> 0 [isssso]);
+    encode!(-74 -> 0 [ssssso]);
+    encode!(-75 -> 0 [dsssso]);
+    encode!(-76 -> 0 [sssso]);
+    encode!(-77 -> 0 [isssso]);
+    encode!(-78 -> 0 [ddssso]);
+    encode!(-79 -> 0 [dssso]);
+    encode!(-80 -> 0 [ssso]);
+    encode!(-81 -> 0 [issso]);
+    encode!(-82 -> 0 [iissso]);
+    encode!(-83 -> 0 [dsssso]);
+    encode!(-84 -> 0 [sssso]);
+    encode!(-85 -> 0 [isssso]);
+    encode!(-86 -> 0 [ssssso]);
+    encode!(-87 -> 0 [dsssso]);
+    encode!(-88 -> 0 [sssso]);
+    encode!(-89 -> 0 [isssso]);
+    encode!(-90 -> 0 [ssssso]);
+    encode!(-91 -> 0 [dsssso]);
+    encode!(-92 -> 0 [sssso]);
+    encode!(-93 -> 0 [isssso]);
+    encode!(-94 -> 0 [ddssso]);
+    encode!(-95 -> 0 [dssso]);
+    encode!(-96 -> 0 [ssso]);
+    encode!(-97 -> 0 [issso]);
+    encode!(-98 -> 0 [iissso]);
+    encode!(-99 -> 0 [dsssso]);
+    encode!(-100 -> 0 [sssso]);
 
     // "Hello, World!"
     encode!(0 -> 72 [iiisdsiiiiiiiio]);
@@ -421,6 +527,13 @@ fn compare_encode(mut f: Box<dyn FnMut(Value, Value) -> Option<Vec<Inst>>>) {
     encode!(114 -> 108 [ddddddo]);
     encode!(108 -> 100 [ddddddddo]);
     encode!(100 -> 33 [ssssiisiisdddo]);
+
+    // Fuzz bugs
+    encode!(16777219 -> 0 [isso]);
+
+    if !pass {
+        panic!("Incorrect encodings");
+    }
 }
 
 #[ignore]

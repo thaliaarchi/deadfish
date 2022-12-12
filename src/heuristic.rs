@@ -72,21 +72,28 @@ const fn encode_to_0(v: Value) -> (Offset, u32) {
 
 #[inline]
 const fn encode_to_0_no_overflow(v: Value) -> (Offset, u32) {
+    // Cases for squaring to `x << 32` are not necessary here, because each of
+    // those roots have at least 16 trailing zeros and are covered by
+    // `encode_to_0_overflow`.
+    const N16: u32 = -16i32 as u32;
+    const N4: u32 = -4i32 as u32;
     const LOW_16: u32 = (4 + 16) / 2;
     const LOW_256: u32 = (16 + 256) / 2;
-    const LOW_NEG: u32 = u32::MAX / 2 + 256 / 2;
+    const LOW_N16: u32 = 256 / 2 + N16 / 2;
+    const LOW_N4: u32 = N16 / 2 + N4 / 2 + 1;
+    const LOW_N1: u32 = N4 / 2 + u32::MAX / 2;
     let (target, squares) = match v.value() {
         // Offset to 0
         0..4 => (0, 0),
-        // Offset and square to 256
+        // Square to 256
         4..LOW_16 => (4, 2),
         LOW_16..LOW_256 => (16, 1),
-        LOW_256..LOW_NEG => (256, 0),
+        LOW_256..LOW_N16 => (256, 0),
+        // Square to 256 via negative roots
+        LOW_N16..LOW_N4 => (N16, 1),
+        LOW_N4..LOW_N1 => (N4, 2),
         // Offset to -1
-        LOW_NEG.. => (u32::MAX, 0),
-        // Cases for squaring to `x << 32` are not necessary here, because each
-        // of those roots have at least 16 trailing zeros and are covered by
-        // `encode_to_0_overflow`.
+        LOW_N1.. => (u32::MAX, 0),
     };
     (Offset(target as i64 - v.value() as i64), squares)
 }
