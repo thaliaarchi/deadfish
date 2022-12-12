@@ -124,9 +124,16 @@ const fn encode_to_0_overflow(v: Value) -> (Offset, u32) {
         n = (v + offset).value();
         tz = n.trailing_zeros();
     }
-    let squares = if n.wrapping_mul(n) == 256 {
-        // Square once, if `v` is a modular square root of 256
+    // Check if `v` is a modular root of 256
+    let square = n.wrapping_mul(n);
+    let square2 = square.wrapping_mul(square);
+    let square3 = square2.wrapping_mul(square2);
+    let squares = if square == 256 {
         1
+    } else if square2 == 256 {
+        2
+    } else if square3 == 256 {
+        3
     } else {
         // Square until there are 32 trailing zeros; equivalent to
         // log2(32) - floor(log2(tz))
