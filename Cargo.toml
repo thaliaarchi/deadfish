@@ -1,13 +1,13 @@
 [package]
 name = "deadfish"
 version = "0.1.0"
-authors = ["Thalia Archibald <thalia@aarchibald.com>"]
+authors = ["Thalia Archibald <thalia@archibald.dev>"]
 edition = "2021"
 rust-version = "1.62"
 description = "Efficient encoder for the Deadfish programming language, with accurate semantics"
 readme = "README.md"
-homepage = "https://github.com/andrewarchi/deadfish"
-repository = "https://github.com/andrewarchi/deadfish"
+homepage = "https://github.com/thaliaarchi/deadfish"
+repository = "https://github.com/thaliaarchi/deadfish"
 license = "LGPL-3.0-or-later"
 keywords = ["deadfish", "encoding", "optimizer"]
 categories = ["compilers", "encoding"]
