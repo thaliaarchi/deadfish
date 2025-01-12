@@ -23,7 +23,7 @@ impl Value {
 
     #[must_use]
     #[inline]
-    pub const fn from_checked(n: u32) -> Option<Self> {
+    pub fn from_checked(n: u32) -> Option<Self> {
         if n == normalize(n) {
             Some(Value(n))
         } else {
@@ -32,7 +32,7 @@ impl Value {
     }
 
     #[inline]
-    pub(crate) const fn from_raw(n: u32) -> Self {
+    pub(crate) fn from_raw(n: u32) -> Self {
         debug_assert!(n == normalize(n));
         Value(n)
     }
@@ -46,7 +46,7 @@ impl Value {
     /// Compute the operation on the value.
     #[must_use]
     #[inline]
-    pub const fn apply(self, inst: Inst) -> Self {
+    pub fn apply(self, inst: Inst) -> Self {
         match inst {
             Inst::I => self.increment(),
             Inst::D => self.decrement(),
@@ -74,17 +74,17 @@ impl Value {
     }
 
     #[must_use]
-    pub const fn increment(self) -> Self {
+    pub fn increment(self) -> Self {
         Value::from(self.0.wrapping_add(1))
     }
 
     #[must_use]
-    pub const fn decrement(self) -> Self {
+    pub fn decrement(self) -> Self {
         Value::from(self.0.wrapping_sub(1))
     }
 
     #[must_use]
-    pub const fn square(self) -> Self {
+    pub fn square(self) -> Self {
         Value::from(self.0.wrapping_mul(self.0))
     }
 
@@ -167,13 +167,13 @@ impl Offset {
 
     #[must_use]
     #[inline]
-    pub const fn abs(&self) -> u32 {
+    pub fn abs(&self) -> u32 {
         self.0.unsigned_abs().try_into().unwrap_or(u32::MAX)
     }
 
     #[must_use]
     #[inline]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.abs() as usize
     }
 
@@ -184,7 +184,7 @@ impl Offset {
     }
 }
 
-impl const Add<u32> for Value {
+impl Add<u32> for Value {
     type Output = Value;
 
     #[inline]
@@ -198,13 +198,13 @@ impl const Add<u32> for Value {
     }
 }
 
-impl const AddAssign<u32> for Value {
+impl AddAssign<u32> for Value {
     fn add_assign(&mut self, rhs: u32) {
         *self = *self + rhs;
     }
 }
 
-impl const Sub<u32> for Value {
+impl Sub<u32> for Value {
     type Output = Value;
 
     #[inline]
@@ -218,13 +218,13 @@ impl const Sub<u32> for Value {
     }
 }
 
-impl const SubAssign<u32> for Value {
+impl SubAssign<u32> for Value {
     fn sub_assign(&mut self, rhs: u32) {
         *self = *self - rhs;
     }
 }
 
-impl const Add<Offset> for Value {
+impl Add<Offset> for Value {
     type Output = Value;
 
     #[inline]
@@ -237,13 +237,13 @@ impl const Add<Offset> for Value {
     }
 }
 
-impl const AddAssign<Offset> for Value {
+impl AddAssign<Offset> for Value {
     fn add_assign(&mut self, rhs: Offset) {
         *self = *self + rhs;
     }
 }
 
-impl const Sub<Offset> for Value {
+impl Sub<Offset> for Value {
     type Output = Value;
 
     #[inline]
@@ -252,13 +252,13 @@ impl const Sub<Offset> for Value {
     }
 }
 
-impl const SubAssign<Offset> for Value {
+impl SubAssign<Offset> for Value {
     fn sub_assign(&mut self, rhs: Offset) {
         *self = *self - rhs;
     }
 }
 
-impl const Neg for Offset {
+impl Neg for Offset {
     type Output = Offset;
 
     #[inline]
@@ -267,14 +267,14 @@ impl const Neg for Offset {
     }
 }
 
-impl const PartialEq<u32> for Value {
+impl PartialEq<u32> for Value {
     #[inline]
     fn eq(&self, other: &u32) -> bool {
         self.0 == *other
     }
 }
 
-impl const PartialOrd<u32> for Value {
+impl PartialOrd<u32> for Value {
     #[inline]
     fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
         if self.0 == *other {
@@ -289,14 +289,14 @@ impl const PartialOrd<u32> for Value {
     }
 }
 
-impl const PartialOrd for Offset {
+impl PartialOrd for Offset {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl const Ord for Offset {
+impl Ord for Offset {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         if self.0 == other.0 {
@@ -313,49 +313,49 @@ impl const Ord for Offset {
     }
 }
 
-impl const Default for Value {
+impl Default for Value {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl const Default for Offset {
+impl Default for Offset {
     #[inline]
     fn default() -> Self {
         Offset(0)
     }
 }
 
-impl const From<u32> for Value {
+impl From<u32> for Value {
     #[inline]
     fn from(n: u32) -> Self {
         Value(normalize(n))
     }
 }
 
-impl const From<i32> for Value {
+impl From<i32> for Value {
     #[inline]
     fn from(n: i32) -> Self {
         Value(normalize(n as u32))
     }
 }
 
-impl const From<Value> for u32 {
+impl From<Value> for u32 {
     #[inline]
     fn from(v: Value) -> Self {
         v.0
     }
 }
 
-impl const From<Value> for i32 {
+impl From<Value> for i32 {
     #[inline]
     fn from(v: Value) -> Self {
         v.0 as i32
     }
 }
 
-impl const From<i64> for Offset {
+impl From<i64> for Offset {
     #[inline]
     fn from(offset: i64) -> Self {
         Offset(offset)
@@ -375,7 +375,7 @@ impl Display for Offset {
 }
 
 #[inline]
-const fn normalize(n: u32) -> u32 {
+fn normalize(n: u32) -> u32 {
     if n == 256 || n == u32::MAX {
         0
     } else {

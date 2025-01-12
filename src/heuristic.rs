@@ -50,7 +50,7 @@ fn encode_from_0(v: Value) -> (VecDeque<Offset>, usize) {
 /// Finds the shortest path from `v` to 0, preferring fewer squares as a
 /// tiebreaker.
 #[inline]
-const fn encode_to_0(v: Value) -> (Offset, u32) {
+fn encode_to_0(v: Value) -> (Offset, u32) {
     let (offset1, squares1) = encode_to_0_no_overflow(v);
     let (offset2, squares2) = encode_to_0_overflow(v);
     let len1 = offset1.abs() + squares1;
@@ -91,7 +91,7 @@ const fn encode_to_0_no_overflow(v: Value) -> (Offset, u32) {
 }
 
 #[inline]
-const fn encode_to_0_overflow(v: Value) -> (Offset, u32) {
+fn encode_to_0_overflow(v: Value) -> (Offset, u32) {
     let mut n = v.value();
     let mut tz = n.trailing_zeros();
     let mut offset = Offset(0);

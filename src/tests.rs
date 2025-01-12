@@ -94,13 +94,13 @@ fn hello_world() {
 
 #[test]
 fn compare_heuristic() {
-    compare_encode(box |from, to| Some(Inst::encode_number(from, to)))
+    compare_encode(&mut |from, to| Some(Inst::encode_number(from, to)))
 }
 
 #[test]
 fn compare_bfs() {
     let mut enc = BfsEncoder::with_bound(16);
-    compare_encode(box move |from, to| {
+    compare_encode(&mut |from, to| {
         let (mut path, optimal) = enc.encode(from, to);
         if let Some(path) = &mut path {
             path.push(Inst::O);
@@ -112,7 +112,7 @@ fn compare_bfs() {
     });
 }
 
-fn compare_encode(mut f: Box<dyn FnMut(Value, Value) -> Option<Vec<Inst>>>) {
+fn compare_encode(f: &mut dyn FnMut(Value, Value) -> Option<Vec<Inst>>) {
     let mut pass = true;
 
     let mut compare =
