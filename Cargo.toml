@@ -8,7 +8,7 @@ description = "Efficient encoder for the Deadfish programming language, with acc
 readme = "README.md"
 homepage = "https://github.com/thaliaarchi/deadfish"
 repository = "https://github.com/thaliaarchi/deadfish"
-license = "LGPL-3.0-or-later"
+license = "MPL-2.0"
 keywords = ["deadfish", "encoding", "optimizer"]
 categories = ["compilers", "encoding"]
 
