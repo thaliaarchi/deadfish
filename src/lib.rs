@@ -38,12 +38,14 @@ pub use bfs::*;
 pub use builder::*;
 pub(crate) use heuristic::*;
 pub use inst::*;
+pub use sqrt::*;
 pub use value::*;
 
 mod bfs;
 mod builder;
 mod heuristic;
 mod inst;
+mod sqrt;
 mod value;
 
 #[cfg(test)]
