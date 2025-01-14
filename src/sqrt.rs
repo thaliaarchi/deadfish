@@ -31,70 +31,60 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
                 $T::MAX,
             ];
 
-            fn modular_sqrt(x: $T, e: u32) -> Vec<$T> {
-                if x == 1 {
-                    SQRTS_OF_ONE.to_vec()
-                } else if !x.is_wrapping_square() {
-                    Vec::new()
-                } else if x % 2 == 0 {
-                    let max = $T::MAX >> ($T::BITS - e);
-                    if x == 0 {
-                        (0..=max).step_by(1 << e.div_ceil(2)).collect()
-                    } else {
-                        let tz = x.trailing_zeros();
-                        // Squares have even number of trailing zeros.
-                        let valuation = tz / 2;
-                        let exp = e - valuation - 1;
-                        let p_val = 1 << valuation;
-                        let p_exp = 1 << exp;
-                        // TODO: Pre-allocate Vec.
-                        // TODO: Inline this recursive call, since it does not
-                        // recurse again.
-                        let mut sqrts = Vec::new();
-                        for sqrt in modular_sqrt(x >> tz, $T::BITS - tz) {
-                            for a in (0..=max).step_by(p_exp) {
-                                sqrts.push(sqrt.wrapping_mul(p_val).wrapping_add(a));
-                            }
-                        }
-                        sqrts.sort_unstable();
-                        sqrts.dedup();
-                        sqrts
-                    }
-                } else {
-                    let y = modular_sqrt_odd(x, e);
-                    let mut sqrts = SQRTS_OF_ONE.map(|sqrt| sqrt.wrapping_mul(y)).to_vec();
-                    sqrts.sort_unstable();
-                    sqrts.dedup();
-                    sqrts
-                }
+            let x = *self;
+            if x == 0 {
+                // TODO: The step should be $T not usize.
+                return (0..=$T::MAX).step_by(1 << $T::BITS.div_ceil(2)).collect();
+            }
+            if x == 1 {
+                return SQRTS_OF_ONE.to_vec();
+            }
+            if !x.is_wrapping_square() {
+                return Vec::new();
             }
 
-            fn modular_sqrt_odd(x: $T, e: u32) -> $T {
-                if x == 0 {
-                    return 0;
+            // Factor out powers of 2.
+            let tz = x.trailing_zeros();
+            let x = x >> tz;
+            let e = $T::BITS - tz;
+
+            // Find y^2 = x (mod 32).
+            let mut y: $T = match x & 31 {
+                1 => 1,
+                9 => 3,
+                25 => 5,
+                17 => 7,
+                _ => unreachable!(),
+            };
+            let mut t = y.wrapping_mul(y).wrapping_sub(x) >> 5;
+            for i in 4..e - 1 {
+                if t & 1 != 0 {
+                    y |= 1 << i;
+                    t += y - (1 << i - 1);
                 }
-                debug_assert_eq!(x.trailing_zeros(), 0, "powers of 2 must be factored: {x}");
-                debug_assert!(x % 8 == 1, "must be a square: {x}");
-                // Find y^2 = x (mod 32).
-                let mut y: $T = match x & 31 {
-                    1 => 1,
-                    9 => 3,
-                    25 => 5,
-                    17 => 7,
-                    _ => unreachable!("sqrt (mod 32)"),
-                };
-                let mut t = y.wrapping_mul(y).wrapping_sub(x) >> 5;
-                for i in 4..e - 1 {
-                    if t & 1 != 0 {
-                        y |= 1 << i;
-                        t += y - (1 << i - 1);
+                t >>= 1;
+            }
+            let mut sqrts = SQRTS_OF_ONE.map(|sqrt| sqrt.wrapping_mul(y)).to_vec();
+
+            if tz != 0 {
+                // Squares have even number of trailing zeros.
+                let valuation = tz / 2;
+                let exp = $T::BITS - valuation - 1;
+                let p_val = 1 << valuation;
+                let p_exp = 1 << exp;
+                // TODO: Pre-allocate Vec.
+                let mut sqrts2 = Vec::new();
+                for sqrt in sqrts {
+                    for a in (0..=$T::MAX).step_by(p_exp) {
+                        sqrts2.push(sqrt.wrapping_mul(p_val).wrapping_add(a));
                     }
-                    t >>= 1;
                 }
-                y
+                sqrts = sqrts2;
             }
 
-            modular_sqrt(*self, $T::BITS)
+            sqrts.sort_unstable();
+            sqrts.dedup();
+            sqrts
         }
 
         fn is_wrapping_square(&self) -> bool {
