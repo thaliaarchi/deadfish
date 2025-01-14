@@ -44,17 +44,14 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
                         let tz = x.trailing_zeros();
                         // Squares have even number of trailing zeros.
                         let valuation = tz / 2;
-                        let mut exp = e - valuation - 1;
-                        if 2 * exp < e {
-                            exp = exp.div_ceil(2);
-                        }
+                        let exp = e - valuation - 1;
                         let p_val = 1 << valuation;
                         let p_exp = 1 << exp;
                         // TODO: Pre-allocate Vec.
                         // TODO: Inline this recursive call, since it does not
                         // recurse again.
                         let mut sqrts = Vec::new();
-                        for sqrt in modular_sqrt(x >> tz, $T::BITS - valuation) {
+                        for sqrt in modular_sqrt(x >> tz, $T::BITS - tz) {
                             for a in (0..=max).step_by(p_exp) {
                                 sqrts.push(sqrt.wrapping_mul(p_val).wrapping_add(a));
                             }
@@ -64,10 +61,7 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
                         sqrts
                     }
                 } else {
-                    let mut y = modular_sqrt_odd(x, e);
-                    if y > 1 << (e - 1) {
-                        y = y.wrapping_neg();
-                    }
+                    let y = modular_sqrt_odd(x, e);
                     let mut sqrts = SQRTS_OF_ONE.map(|sqrt| sqrt.wrapping_mul(y)).to_vec();
                     sqrts.sort_unstable();
                     sqrts.dedup();
