@@ -64,27 +64,27 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
                 }
                 t >>= 1;
             }
-            let mut sqrts = SQRTS_OF_ONE.map(|sqrt| sqrt.wrapping_mul(y)).to_vec();
 
             if tz != 0 {
                 // Squares have even number of trailing zeros.
                 let valuation = tz / 2;
                 let exp = $T::BITS - valuation - 1;
-                let p_val = 1 << valuation;
-                let p_exp = 1 << exp;
                 // TODO: Pre-allocate Vec.
-                let mut sqrts2 = Vec::new();
-                for sqrt in sqrts {
-                    for a in (0..=$T::MAX).step_by(p_exp) {
-                        sqrts2.push(sqrt.wrapping_mul(p_val).wrapping_add(a));
+                let mut sqrts = Vec::new();
+                for sqrt in SQRTS_OF_ONE.map(|sqrt| sqrt.wrapping_mul(y)) {
+                    for a in (0..=$T::MAX).step_by(1 << exp) {
+                        sqrts.push(sqrt.wrapping_mul(1 << valuation).wrapping_add(a));
                     }
                 }
-                sqrts = sqrts2;
+                sqrts.sort_unstable();
+                sqrts.dedup();
+                sqrts
+            } else {
+                // Handle odd numbers separately to avoid deduplicating.
+                let mut sqrts = SQRTS_OF_ONE.map(|sqrt| sqrt.wrapping_mul(y)).to_vec();
+                sqrts.sort_unstable();
+                sqrts
             }
-
-            sqrts.sort_unstable();
-            sqrts.dedup();
-            sqrts
         }
 
         fn is_wrapping_square(&self) -> bool {
