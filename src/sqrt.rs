@@ -39,24 +39,24 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
             if x == 1 {
                 return SQRTS_OF_ONE.to_vec();
             }
-            if !x.is_wrapping_square() {
+
+            // Factor out powers of 2. It must be an even power of 2.
+            let tz = x.trailing_zeros();
+            if tz % 2 != 0 {
                 return Vec::new();
             }
-
-            // Factor out powers of 2.
-            let tz = x.trailing_zeros();
             let x = x >> tz;
             let e = $T::BITS - tz;
 
             // Find y^2 = x (mod 32).
-            let mut y: $T = match x & 31 {
+            let mut y: $T = match x % 32 {
                 1 => 1,
                 9 => 3,
                 25 => 5,
                 17 => 7,
-                _ => unreachable!(),
+                _ => return Vec::new(),
             };
-            let mut t = y.wrapping_mul(y).wrapping_sub(x) >> 5;
+            let mut t = y.wrapping_mul(y).wrapping_sub(x) / 32;
             for i in 4..e - 1 {
                 if t & 1 != 0 {
                     y |= 1 << i;
