@@ -76,18 +76,19 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
             }
 
             fn modular_sqrt_odd(x: $T, e: u32) -> $T {
-                debug_assert_eq!(x.trailing_zeros(), 0);
-                if x == 0 || x == 1 {
-                    return x;
+                if x == 0 {
+                    return 0;
                 }
-                if x % 8 != 1 {
-                    panic!("must be a square");
-                }
-                let mut y = (1 as $T..8)
-                    .step_by(2)
-                    .filter(|&i| i.wrapping_mul(i) & 31 == x & 31)
-                    .next()
-                    .unwrap();
+                debug_assert_eq!(x.trailing_zeros(), 0, "powers of 2 must be factored: {x}");
+                debug_assert!(x % 8 == 1, "must be a square: {x}");
+                // Find y^2 = x (mod 32).
+                let mut y: $T = match x & 31 {
+                    1 => 1,
+                    9 => 3,
+                    25 => 5,
+                    17 => 7,
+                    _ => unreachable!("sqrt (mod 32)"),
+                };
                 let mut t = y.wrapping_mul(y).wrapping_sub(x) >> 5;
                 for i in 4..e - 1 {
                     if t & 1 != 0 {
@@ -103,6 +104,7 @@ macro_rules! impl_unsigned_wrapping_sqrt(($($T:ident),* $(,)?) => {
         }
 
         fn is_wrapping_square(&self) -> bool {
+            // Squares in Z/2^e are of the form 4^n * (8*m + 1).
             let x = *self;
             if x == 0 {
                 return true;
