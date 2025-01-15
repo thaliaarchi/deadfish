@@ -29,7 +29,7 @@ pub(crate) fn heuristic_encode(b: &mut Builder, v: Value) {
         b.square(squares_to_0);
         b.offset_squares(&offsets_from_0);
     }
-    debug_assert_eq!(v, b.acc(), "acc={acc} {:?}", &b.insts()[start..]);
+    debug_assert_eq!(b.acc(), v, "acc={acc} {:?}", &b.insts()[start..]);
 }
 
 fn encode_from_0(v: Value) -> (VecDeque<Offset>, usize) {
@@ -148,6 +148,6 @@ fn sqrts_of_256() {
         3892314128, 4026531824, 4026531856, 4160749552, 4160749584, 4294967280,
     ];
     for n in sqrts_of_256 {
-        assert_eq!((Offset(0), 1), encode_to_0(Value::from(n)));
+        assert_eq!(encode_to_0(Value::from(n)), (Offset(0), 1));
     }
 }

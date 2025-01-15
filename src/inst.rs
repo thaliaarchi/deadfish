@@ -3,7 +3,6 @@ use std::io::{self, Write};
 use crate::{Builder, Value};
 
 /// Deadfish instructions.
-#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Inst {
     /// `i` — Increment
@@ -19,13 +18,11 @@ pub enum Inst {
 }
 
 impl Inst {
-    #[must_use]
     #[inline]
     pub fn eval(insts: &[Inst], acc: Value) -> Value {
         insts.iter().fold(acc, |acc, &inst| acc.apply(inst))
     }
 
-    #[must_use]
     #[inline]
     pub fn encode_number(from: Value, to: Value) -> Vec<Inst> {
         let mut b = Builder::new(from);
@@ -33,7 +30,6 @@ impl Inst {
         b.into()
     }
 
-    #[must_use]
     #[inline]
     pub fn encode_numbers(ir: &Vec<Value>) -> Vec<Inst> {
         let mut b = Builder::new(Value::new());
@@ -41,14 +37,12 @@ impl Inst {
         b.into()
     }
 
-    #[must_use]
     #[inline]
     pub fn minimize(insts: &[Inst]) -> Vec<Inst> {
         let (numbers, _) = Inst::eval_numbers(insts);
-        Self::encode_numbers(&numbers)
+        Inst::encode_numbers(&numbers)
     }
 
-    #[must_use]
     pub fn parse<B: AsRef<[u8]>>(src: B) -> Vec<Inst> {
         let src = src.as_ref();
         let mut insts = Vec::with_capacity(src.len());
@@ -64,7 +58,6 @@ impl Inst {
         insts
     }
 
-    #[must_use]
     pub fn eval_numbers(insts: &[Inst]) -> (Vec<Value>, Value) {
         let mut numbers = Vec::new();
         let mut acc = Value::new();
@@ -77,7 +70,6 @@ impl Inst {
         (numbers, acc)
     }
 
-    #[must_use]
     pub fn eval_string(insts: &[Inst]) -> Option<String> {
         let mut s = String::new();
         let mut acc = Value::new();
@@ -116,7 +108,6 @@ pub enum Ir {
 }
 
 impl Ir {
-    #[must_use]
     pub fn eval(insts: &[Inst]) -> (Vec<Self>, Value) {
         let mut ir = Vec::new();
         let mut acc = Value::new();
@@ -175,7 +166,6 @@ impl Ir {
         (ir, acc)
     }
 
-    #[must_use]
     pub fn eval_string(ir: &[Ir]) -> Option<String> {
         let mut s = String::new();
         for &inst in ir {

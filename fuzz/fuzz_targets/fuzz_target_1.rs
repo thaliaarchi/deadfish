@@ -16,19 +16,17 @@ fuzz_target!(|data: [u32; 2]| {
             let heuristic_path = b.into_insts();
 
             assert_eq!(
-                bfs_path.len(),
                 heuristic_path.len(),
+                bfs_path.len(),
                 "{from} -> {to} (signed)
-{} -> {} (unsigned)
-{:032b} -> {:032b} (binary)
-BFS       (len={}) {bfs_path:?}
-Heuristic (len={}) {heuristic_path:?}",
-                from.value(),
-                to.value(),
-                from.value(),
-                to.value(),
-                bfs_path.len(),
-                heuristic_path.len(),
+{from_unsigned} -> {to_unsigned} (unsigned)
+{from_unsigned:032b} -> {to_unsigned:032b} (binary)
+Heuristic (len={heuristic_len}) {heuristic_path:?}
+BFS       (len={bfs_len}) {bfs_path:?}",
+                from_unsigned = from.value(),
+                to_unsigned = to.value(),
+                heuristic_len = heuristic_path.len(),
+                bfs_len = bfs_path.len(),
             );
         }
     }

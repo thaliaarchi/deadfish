@@ -1,6 +1,8 @@
-use std::cmp::Ordering;
-use std::fmt::{self, Display, Formatter};
-use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
+use std::{
+    cmp::Ordering,
+    fmt::{self, Display, Formatter},
+    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+};
 
 use crate::Inst;
 
@@ -15,13 +17,11 @@ pub struct Offset(pub(crate) i64);
 
 impl Value {
     /// Create a new Deadfish value of zero.
-    #[must_use]
     #[inline]
     pub const fn new() -> Self {
         Value(0)
     }
 
-    #[must_use]
     #[inline]
     pub fn from_checked(n: u32) -> Option<Self> {
         if n == normalize(n) {
@@ -37,14 +37,12 @@ impl Value {
         Value(n)
     }
 
-    #[must_use]
     #[inline]
     pub const fn value(self) -> u32 {
         self.0
     }
 
     /// Compute the operation on the value.
-    #[must_use]
     #[inline]
     pub fn apply(self, inst: Inst) -> Self {
         match inst {
@@ -56,10 +54,9 @@ impl Value {
     }
 
     /// Compute the inverse operation on the value, if possible.
-    #[must_use]
     #[inline]
     pub fn apply_inverse(self, inst: Inst) -> Option<Self> {
-        Self::from_checked(match inst {
+        Value::from_checked(match inst {
             Inst::I => self.0.wrapping_sub(1),
             Inst::D => self.0.wrapping_add(1),
             Inst::S => {
@@ -73,22 +70,18 @@ impl Value {
         })
     }
 
-    #[must_use]
     pub fn increment(self) -> Self {
         Value::from(self.0.wrapping_add(1))
     }
 
-    #[must_use]
     pub fn decrement(self) -> Self {
         Value::from(self.0.wrapping_sub(1))
     }
 
-    #[must_use]
     pub fn square(self) -> Self {
         Value::from(self.0.wrapping_mul(self.0))
     }
 
-    #[must_use]
     #[inline]
     pub const fn saturating_add(self, rhs: u32) -> Self {
         let add = self.0.saturating_add(rhs);
@@ -101,7 +94,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     #[inline]
     pub const fn saturating_sub(self, rhs: u32) -> Self {
         let sub = self.0.saturating_sub(rhs);
@@ -114,7 +106,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     #[inline]
     pub fn square_repeat(self, count: u32) -> Self {
         let mut n = self.0;
@@ -127,7 +118,6 @@ impl Value {
         Value(n)
     }
 
-    #[must_use]
     #[inline]
     pub fn nearest_sqrt(&self) -> (Value, Offset) {
         let sqrt = (self.0 as f64).sqrt();
@@ -143,7 +133,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     #[inline]
     pub const fn offset_to(self, other: Value) -> Option<Offset> {
         if (self.0 < 256) == (other.0 < 256) {
@@ -155,7 +144,6 @@ impl Value {
 }
 
 impl Offset {
-    #[must_use]
     #[inline]
     pub const fn new(offset: u32, is_negative: bool) -> Self {
         if is_negative {
@@ -165,19 +153,16 @@ impl Offset {
         }
     }
 
-    #[must_use]
     #[inline]
     pub fn abs(&self) -> u32 {
         self.0.unsigned_abs().try_into().unwrap_or(u32::MAX)
     }
 
-    #[must_use]
     #[inline]
     pub fn len(&self) -> usize {
         self.abs() as usize
     }
 
-    #[must_use]
     #[inline]
     pub const fn is_negative(&self) -> bool {
         self.0 < 0
@@ -316,7 +301,7 @@ impl Ord for Offset {
 impl Default for Value {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        Value::new()
     }
 }
 

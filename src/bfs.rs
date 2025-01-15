@@ -19,7 +19,7 @@ pub struct BfsEncoder {
 #[derive(Copy, Clone, Debug)]
 struct Node {
     /// Value of the node.
-    v: Value,
+    value: Value,
     /// Instruction to produce `v` from the previous node or `None`, if the
     /// first node in the path.
     inst: Option<Inst>,
@@ -31,13 +31,11 @@ struct Node {
 }
 
 impl BfsEncoder {
-    #[must_use]
     #[inline]
     pub fn new() -> Self {
-        Self::with_bound(usize::MAX)
+        BfsEncoder::with_bound(usize::MAX)
     }
 
-    #[must_use]
     #[inline]
     pub fn with_bound(max_len: usize) -> Self {
         BfsEncoder {
@@ -56,7 +54,6 @@ impl BfsEncoder {
     /// Performs a breadth-first search to encode `to` as Deadfish instructions,
     /// starting at `from`. Returns a path, if one could be constructed, and
     /// whether it's optimal.
-    #[must_use]
     pub fn encode(&mut self, from: Value, to: Value) -> (Option<Vec<Inst>>, bool) {
         self.queue.clear();
         self.index = 0;
@@ -66,38 +63,39 @@ impl BfsEncoder {
         let mut closest_square = None;
 
         self.queue.push(Node {
-            v: from,
+            value: from,
             inst: None,
             prev: usize::MAX,
             len: 0,
         });
         while let Some((i, node)) = self.queue_next() {
-            if node.v == to {
+            if node.value == to {
                 return (Some(self.path_from_queue(i)), true);
             }
 
             // Track the shortest path to 0, because a path from 0 to `to` is
-            // usually short
-            if node.v == 0 && zero_index == None {
+            // usually short.
+            if node.value == 0 && zero_index == None {
                 zero_index = Some(i);
             }
 
             if node.len < self.max_len {
                 for inst in [Inst::I, Inst::D, Inst::S] {
-                    let v = node.v.apply(inst);
-                    if self.visited.insert(v) {
+                    let value = node.value.apply(inst);
+                    if self.visited.insert(value) {
                         let path_len = node.len + 1;
                         self.queue.push(Node {
-                            v,
+                            value,
                             inst: Some(inst),
                             prev: i,
                             len: path_len,
                         });
                         let i = self.queue.len();
 
-                        // Track the square that is closest to `to` by an offset
+                        // Track the square that is closest to `to` by an
+                        // offset.
                         if inst == Inst::S {
-                            if let Some(offset) = v.offset_to(to) {
+                            if let Some(offset) = value.offset_to(to) {
                                 let path_len = path_len as usize + offset.len();
                                 if !matches!(closest_square, Some((_, _, len)) if len <= path_len) {
                                     closest_square = Some((i, offset, path_len));
@@ -116,7 +114,7 @@ impl BfsEncoder {
             path = Some(b.into_insts());
         }
         if let Some((i, offset, _)) = closest_square {
-            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].v);
+            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].value);
             b.offset(offset);
             let square_path = b.into_insts();
             if !matches!(&path, Some(path) if path.len() <= square_path.len()) {
@@ -129,9 +127,9 @@ impl BfsEncoder {
     #[inline]
     fn queue_next(&mut self) -> Option<(usize, Node)> {
         let i = self.index;
-        if let Some(node) = self.queue.get(i) {
+        if let Some(&node) = self.queue.get(i) {
             self.index += 1;
-            Some((i, *node))
+            Some((i, node))
         } else {
             None
         }
@@ -156,6 +154,6 @@ impl BfsEncoder {
 
 impl Default for BfsEncoder {
     fn default() -> Self {
-        Self::new()
+        BfsEncoder::new()
     }
 }

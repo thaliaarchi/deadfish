@@ -9,31 +9,26 @@ pub struct Builder {
 }
 
 impl Builder {
-    #[must_use]
     #[inline]
     pub fn new(acc: Value) -> Self {
-        Self::from_insts(Vec::new(), acc)
+        Builder::from_insts(Vec::new(), acc)
     }
 
-    #[must_use]
     #[inline]
     pub fn from_insts(insts: Vec<Inst>, acc: Value) -> Self {
         Builder { insts, acc }
     }
 
-    #[must_use]
     #[inline]
     pub const fn acc(&self) -> Value {
         self.acc
     }
 
-    #[must_use]
     #[inline]
     pub fn insts(&self) -> &[Inst] {
         &self.insts
     }
 
-    #[must_use]
     #[inline]
     pub fn into_insts(self) -> Vec<Inst> {
         self.insts
@@ -141,7 +136,7 @@ impl From<Builder> for Vec<Inst> {
 
 impl Default for Builder {
     fn default() -> Self {
-        Self::new(Value::new())
+        Builder::new(Value::new())
     }
 }
 
@@ -151,5 +146,5 @@ fn decompose_256() {
     let decomposed = "A\u{0304}tra beigto zivju kodēšana";
     let mut b = Builder::new(Value::new());
     b.push_string(composed);
-    assert_eq!(decomposed, Inst::eval_string(b.insts()).unwrap());
+    assert_eq!(Inst::eval_string(b.insts()).unwrap(), decomposed);
 }

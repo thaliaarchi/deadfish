@@ -10,19 +10,19 @@ macro_rules! insts[
 fn eval() {
     // Example programs from https://esolangs.org/wiki/Deadfish#Example_programs
     assert_eq!(
+        Ir::eval(&insts![iissso]),
         (vec![Ir::Prompts(6), Ir::Number(0.into())], Value::from(0)),
-        Ir::eval(&insts![iissso])
     );
     assert_eq!(
+        Ir::eval(&insts![diissisdo]),
         (
             vec![Ir::Prompts(9), Ir::Number(288.into())],
             Value::from(288)
         ),
-        Ir::eval(&insts![diissisdo])
     );
     assert_eq!(
+        Ir::eval(&insts![iissisdddddddddddddddddddddddddddddddddo]),
         (vec![Ir::Prompts(40), Ir::Number(0.into())], Value::from(0)),
-        Ir::eval(&insts![iissisdddddddddddddddddddddddddddddddddo])
     );
 }
 
@@ -83,13 +83,13 @@ fn hello_world() {
 >> 
 ";
 
-    assert_eq!((ir, Value::from(100)), Ir::eval(&program));
+    assert_eq!(Ir::eval(&program), (ir, Value::from(100)));
 
-    assert_eq!(minimized, Inst::minimize(&program));
+    assert_eq!(Inst::minimize(&program), minimized);
 
     let mut stdout = Vec::new();
     Inst::interpret(&program, &mut stdout).unwrap();
-    assert_eq!(shell, String::from_utf8(stdout).unwrap());
+    assert_eq!(String::from_utf8(stdout).unwrap(), shell);
 }
 
 #[test]
@@ -106,27 +106,27 @@ fn compare_bfs() {
             path.push(Inst::O);
         }
         if !optimal {
-            println!("{from} -> {to} may not be optimal with {path:?}");
+            eprintln!("{from} -> {to} may not be optimal with {path:?}");
         }
         path
     });
 }
 
 fn compare_encode(f: &mut dyn FnMut(Value, Value) -> Option<Vec<Inst>>) {
-    let mut pass = true;
+    let mut fail = false;
 
     let mut compare =
         |from: Value, to: Value, path: Option<Vec<Inst>>, known_paths: &[Vec<Inst>]| {
             if let Some(path) = path {
                 for p in known_paths {
-                    assert_eq!(to, Inst::eval(p, from), "Inst::eval({p:?}, {from})");
+                    assert_eq!(Inst::eval(p, from), to, "Inst::eval({p:?}, {from})");
                 }
                 if known_paths.iter().find(|&p| &path == p).is_none() {
-                    println!("{from} -> {to} path {path:?} not in {known_paths:?}");
-                    pass = false;
+                    eprintln!("{from} -> {to} path {path:?} not in {known_paths:?}");
+                    fail = true;
                 }
             } else {
-                println!("Unable to encode {from} -> {to}");
+                eprintln!("Unable to encode {from} -> {to}");
             }
         };
     macro_rules! encode(($from:literal -> $to:literal [$($insts:tt),+]) => {
@@ -523,8 +523,8 @@ fn compare_encode(f: &mut dyn FnMut(Value, Value) -> Option<Vec<Inst>>) {
     // Fuzz bugs
     encode!(16777219 -> 0 [isso]);
 
-    if !pass {
-        panic!("Incorrect encodings");
+    if fail {
+        panic!("incorrect encodings");
     }
 }
 
@@ -536,11 +536,11 @@ fn slow_bfs() {
     let to = Value::from(111);
     let path = insts![issssiiisiisddddddddddo];
 
-    assert_eq!(path, Inst::encode_number(from, to));
+    assert_eq!(Inst::encode_number(from, to), path);
 
     let mut enc = BfsEncoder::new();
-    assert_eq!((Some(path.clone()), true), enc.encode(from, to));
+    assert_eq!(enc.encode(from, to), (Some(path.clone()), true));
 
     enc.set_bound(8);
-    assert_eq!((Some(path), false), enc.encode(from, to));
+    assert_eq!(enc.encode(from, to), (Some(path), false));
 }
