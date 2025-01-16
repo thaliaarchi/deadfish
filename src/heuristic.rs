@@ -19,10 +19,10 @@ pub(crate) fn heuristic_encode(b: &mut Builder, v: Value) {
 
     let (offset_to_0, squares_to_0) = encode_to_0(acc);
     let (offsets_from_0, len_from_0) = encode_from_0(v);
-    let len_via_0 = offset_to_0.len() + squares_to_0 as usize + len_from_0;
+    let len_via_0 = offset_to_0.abs() + squares_to_0 + len_from_0;
 
     let start = b.insts().len();
-    if simple_offset.is_some_and(|offset| offset.len() <= len_via_0) {
+    if simple_offset.is_some_and(|offset| offset.abs() <= len_via_0) {
         b.offset(simple_offset.unwrap());
     } else {
         b.offset(offset_to_0);
@@ -32,18 +32,18 @@ pub(crate) fn heuristic_encode(b: &mut Builder, v: Value) {
     debug_assert_eq!(b.acc(), v, "acc={acc} {:?}", &b.insts()[start..]);
 }
 
-fn encode_from_0(v: Value) -> (VecDeque<Offset>, usize) {
+fn encode_from_0(v: Value) -> (VecDeque<Offset>, u32) {
     let mut v = v;
     let mut offsets = VecDeque::new();
     let mut len = 0;
     while v >= 4 {
         let (sqrt, offset) = v.nearest_sqrt();
         offsets.push_front(offset);
-        len += offset.len() + 1;
+        len += offset.abs() + 1;
         v = sqrt;
     }
     offsets.push_front(Offset(v.value() as i64));
-    len += v.value() as usize;
+    len += v.value();
     (offsets, len)
 }
 

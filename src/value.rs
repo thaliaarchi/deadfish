@@ -159,11 +159,6 @@ impl Offset {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
-        self.abs() as usize
-    }
-
-    #[inline]
     pub const fn is_negative(&self) -> bool {
         self.0 < 0
     }

@@ -7,7 +7,9 @@ use crate::{heuristic_encode, Builder, Inst, Value};
 #[derive(Clone, Debug)]
 pub struct BfsEncoder {
     queue: Vec<Node>,
-    index: usize,
+    /// The index in `queue` of the current node. At most 2**32-2 values can be
+    /// visited.
+    index: u32,
     visited: HashSet<Value, FxBuildHasher>,
     max_len: u16,
 }
@@ -23,9 +25,10 @@ struct Node {
     /// Instruction to produce `v` from the previous node or `None`, if the
     /// first node in the path.
     inst: Option<Inst>,
-    /// Index in `queue` of the previous node. To avoid extra space for
-    /// alignment, it's not also within the `Option`, but is treated as such.
-    prev: usize,
+    /// Index in `queue` of the previous node. It is effectively within the
+    /// `Option`, but is a separate field to avoid extra padding for alignment.
+    /// Its `None` value is `u32::MAX`.
+    prev: u32,
     /// Path length.
     len: u16,
 }
@@ -65,7 +68,7 @@ impl BfsEncoder {
         self.queue.push(Node {
             value: from,
             inst: None,
-            prev: usize::MAX,
+            prev: u32::MAX,
             len: 0,
         });
         while let Some((i, node)) = self.queue_next() {
@@ -90,13 +93,13 @@ impl BfsEncoder {
                             prev: i,
                             len: path_len,
                         });
-                        let i = self.queue.len();
+                        let i = self.queue.len().try_into().unwrap();
 
                         // Track the square that is closest to `to` by an
                         // offset.
                         if inst == Inst::S {
                             if let Some(offset) = value.offset_to(to) {
-                                let path_len = path_len as usize + offset.len();
+                                let path_len = path_len as u32 + offset.abs();
                                 if !matches!(closest_square, Some((_, _, len)) if len <= path_len) {
                                     closest_square = Some((i, offset, path_len));
                                 }
@@ -114,7 +117,7 @@ impl BfsEncoder {
             path = Some(b.into_insts());
         }
         if let Some((i, offset, _)) = closest_square {
-            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i].value);
+            let mut b = Builder::from_insts(self.path_from_queue(i), self.queue[i as usize].value);
             b.offset(offset);
             let square_path = b.into_insts();
             if !matches!(&path, Some(path) if path.len() <= square_path.len()) {
@@ -125,9 +128,9 @@ impl BfsEncoder {
     }
 
     #[inline]
-    fn queue_next(&mut self) -> Option<(usize, Node)> {
+    fn queue_next(&mut self) -> Option<(u32, Node)> {
         let i = self.index;
-        if let Some(&node) = self.queue.get(i) {
+        if let Some(&node) = self.queue.get(i as usize) {
             self.index += 1;
             Some((i, node))
         } else {
@@ -135,11 +138,11 @@ impl BfsEncoder {
         }
     }
 
-    fn path_from_queue(&mut self, tail: usize) -> Vec<Inst> {
+    fn path_from_queue(&mut self, tail_index: u32) -> Vec<Inst> {
         let mut path = VecDeque::new();
-        let mut index = tail;
+        let mut index = tail_index;
         loop {
-            let node = self.queue[index];
+            let node = self.queue[index as usize];
             match node.inst {
                 Some(inst) => {
                     path.push_front(inst);
