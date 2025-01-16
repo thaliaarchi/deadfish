@@ -71,6 +71,7 @@ impl BfsEncoder {
             prev: u32::MAX,
             len: 0,
         });
+        self.visited.insert(from);
         while let Some((i, node)) = self.queue_next() {
             if node.value == to {
                 return (Some(self.path_from_queue(i)), true);
